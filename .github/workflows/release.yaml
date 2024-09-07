@@ -6,6 +6,9 @@ on:
       tag:
         description: 'The tag to create for the release'
         required: true
+  push:
+    branches:
+      - master
 
 jobs:
   release:
