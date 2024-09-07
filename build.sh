@@ -51,7 +51,7 @@ build_plugin() {
     (
         cd ./build/$version
 
-        if ! zip -r ScrollBinding-$version.zip *
+        if ! zip -r ScrollBindings-$version.zip *
         then
             echo "Failed to zip the plugin"
             exit 1
@@ -75,7 +75,7 @@ for version in "${versions[@]}"; do
         cd ./build/$version
 
         # Compute checksums
-        sha256sum ScrollBinding-$version.zip >> ../hashes.txt
+        sha256sum ScrollBindings-$version.zip >> ../hashes.txt
     )
 
 done
