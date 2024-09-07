@@ -4,7 +4,7 @@ using OpenTabletDriver.Plugin.Attributes;
 
 namespace ScrollBinding;
 
-[PluginName("Scroll Binding Settings")]
+[PluginName("Scroll Bindings Settings")]
 public class ScrollBindingSettings : ITool
 {
     private int _forwardScroll = 120;

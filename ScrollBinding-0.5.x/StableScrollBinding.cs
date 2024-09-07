@@ -7,7 +7,7 @@ using ScrollBinding.Logging;
 
 namespace ScrollBinding;
 
-[PluginName("Scroll Binding")]
+[PluginName("Scroll Bindings")]
 public class StableScrollBinding : ScrollBindingBase, IValidateBinding, IBinding
 {
     private string _property = string.Empty;

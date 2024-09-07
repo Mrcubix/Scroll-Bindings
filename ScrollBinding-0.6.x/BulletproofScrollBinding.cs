@@ -6,7 +6,7 @@ using ScrollBinding.Logging;
 
 namespace ScrollBinding;
 
-[PluginName("Scroll Binding")]
+[PluginName("Scroll Bindings")]
 public class BulletproofScrollBinding : ScrollBindingBase, IStateBinding
 {
     private string _property = string.Empty;
