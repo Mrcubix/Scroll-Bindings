@@ -1,0 +1,20 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "OpenTabletDriver C# Plugin Debugging",
+            "type": "coreclr",
+            "request": "attach",
+            "processName": "OpenTabletDriver.Daemon",
+            "justMyCode": true,
+            "logging": {
+                "moduleLoad": false
+            },
+        },
+        {
+            "name": ".NET Core Attach",
+            "type": "coreclr",
+            "request": "attach"
+        }
+    ]
+}

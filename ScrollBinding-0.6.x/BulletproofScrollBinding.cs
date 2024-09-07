@@ -2,13 +2,22 @@ using OpenTabletDriver.Plugin;
 using OpenTabletDriver.Plugin.Attributes;
 using OpenTabletDriver.Plugin.Tablet;
 using ScrollBinding.Lib.Enums;
+using ScrollBinding.Logging;
 
 namespace ScrollBinding;
 
 [PluginName("Scroll Binding")]
-public class BulletproofScrollBinding : ScrollBinding, IStateBinding
+public class BulletproofScrollBinding : ScrollBindingBase, IStateBinding
 {
     private string _property = string.Empty;
+
+    public BulletproofScrollBinding() : base(new BulletproofLogger()) 
+    {
+        if (ScrollBindingSettings.Instances.Count == 0)
+            ScrollBindingSettings.SettingsChanged += OnSettingsChanged;
+        else
+            Initialize();
+    }
 
     #region Properties
 
@@ -51,7 +60,11 @@ public class BulletproofScrollBinding : ScrollBinding, IStateBinding
             ScrollDirection.Right => settings.RightScroll,
             _ => 20
         };
+
+        _scrollDelay = settings.ScrollDelay;
     }
+
+    private void OnSettingsChanged(object sender, EventArgs e) => Initialize();
 
     #endregion
 }

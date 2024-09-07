@@ -3,13 +3,22 @@ using System.Linq;
 using OpenTabletDriver.Plugin;
 using OpenTabletDriver.Plugin.Attributes;
 using ScrollBinding.Lib.Enums;
+using ScrollBinding.Logging;
 
 namespace ScrollBinding;
 
 [PluginName("Scroll Binding")]
-public class StableScrollBinding : ScrollBinding, IValidateBinding, IBinding
+public class StableScrollBinding : ScrollBindingBase, IValidateBinding, IBinding
 {
     private string _property = string.Empty;
+
+    public StableScrollBinding() : base(new StableLogger()) 
+    { 
+        if (ScrollBindingSettings.Instance == null)
+            ScrollBindingSettings.SettingsChanged += OnSettingsChanged;
+        else
+            Initialize();
+    }
 
     #region Properties
 
@@ -35,7 +44,7 @@ public class StableScrollBinding : ScrollBinding, IValidateBinding, IBinding
 
     public Action Press => Scroll;
 
-    public Action Release => null;
+    public Action Release => () => _scrolling = false;
 
     #endregion
 
@@ -51,9 +60,13 @@ public class StableScrollBinding : ScrollBinding, IValidateBinding, IBinding
             ScrollDirection.Backward => settings.BackwardScroll,
             ScrollDirection.Left => settings.LeftScroll,
             ScrollDirection.Right => settings.RightScroll,
-            _ => 20
+            _ => 120
         };
+
+        _scrollDelay = settings.ScrollDelay;
     }
+
+    private void OnSettingsChanged(object sender, EventArgs e) => Initialize();
 
     #endregion
 }

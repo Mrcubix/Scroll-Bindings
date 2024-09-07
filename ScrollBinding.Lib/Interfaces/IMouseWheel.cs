@@ -2,11 +2,9 @@
 
 public interface IMouseWheel
 {
-    public void ScrollForward(int amount);
-    
-    public void ScrollBackward(int amount);
+    public void ScrollVertically(int amount);
 
-    public void ScrollLeft(int amount);
+    public void ScrollHorizontally(int amount);
 
-    public void ScrollRight(int amount);
+    public void Flush();
 }
