@@ -79,3 +79,7 @@ for version in "${versions[@]}"; do
     )
 
 done
+
+echo ""
+echo "Plugin build complete"
+echo ""
