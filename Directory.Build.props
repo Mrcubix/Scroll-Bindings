@@ -1,0 +1,6 @@
+<Project>
+  <PropertyGroup>
+    <NoWarn>$(NoWarn); NETSDK1138</NoWarn>
+    <NuGetAuditLevel>critical</NuGetAuditLevel>
+  </PropertyGroup>
+</Project>

@@ -1,0 +1,12 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <LangVersion>preview</LangVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../.modules/OpenTabletDriver-0.6.x/OpenTabletDriver.Desktop/OpenTabletDriver.Desktop.csproj" />
+  </ItemGroup>
+
+</Project>
