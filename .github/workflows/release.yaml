@@ -1,0 +1,45 @@
+name: Generate Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'The tag to create for the release'
+        required: true
+
+jobs:
+  release:
+    permissions:
+      contents: write
+
+    runs-on: ubuntu-latest
+    name: Generate Release
+    env:
+      TAG: ${{ github.event.inputs.tag }}
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: |
+          5.0.x
+          6.0.x
+
+    - name: Build
+      run: bash ./build.sh
+
+    - name: Create Release
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        declare -a files
+
+        # Add generated archives
+        files+=("build/0.5.x/ScrollBindings-0.5.x.zip")
+        files+=("build/0.6.x/ScrollBindings-0.6.x.zip")
+
+        gh release create -d -t "Scroll Bindings $TAG" "$TAG" "${files[@]}" -F build/hashes.txt
