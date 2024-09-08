@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using ScrollBinding.Lib.Devices;
@@ -7,25 +8,26 @@ using ScrollBinding.Lib.Interop;
 
 namespace ScrollBinding;
 
-public abstract class ScrollBindingBase
+public abstract class ScrollBindingBase : IDisposable
 {
     protected ScrollDirection _scrollDirection = ScrollDirection.None;
     protected int _scrollAmount = 120;
     protected int _scrollDelay = 15;
     protected bool _scrolling = false;
-    
+    protected bool _disposed = false;
 
     public ScrollBindingBase(ILogger logger)
     {
         Logger = logger;
-        Wheel = CurrentPlatformWheel;
+
+        Wheel ??= CurrentPlatformWheel;
     }
 
     #region Properties
 
     public abstract string Property { get; set; }
 
-    public IMouseWheel Wheel { get; protected set; }
+    public static IMouseWheel Wheel { get; protected set; }
 
     #endregion
 
@@ -67,6 +69,12 @@ public abstract class ScrollBindingBase
 
             await Task.Delay(_scrollDelay);
         }
+    }
+
+    public void Dispose()
+    {
+        if (_disposed == false && Wheel is IDisposable disposableWheel)
+            disposableWheel.Dispose();
     }
 
     #endregion

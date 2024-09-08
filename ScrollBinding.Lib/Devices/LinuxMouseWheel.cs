@@ -1,10 +1,11 @@
+using System;
 using ScrollBinding.Lib.Enums;
 using ScrollBinding.Lib.Interfaces;
 using ScrollBinding.Native.Linux.Evdev;
 
 namespace ScrollBinding.Lib.Devices
 {
-    public class LinuxMouseWheel : IMouseWheel
+    public class LinuxMouseWheel : IMouseWheel, IDisposable
     {
         private bool _dirty;
 
@@ -27,10 +28,10 @@ namespace ScrollBinding.Lib.Devices
             switch (result)
             {
                 case ERRNO.NONE:
-                    logger?.Debug("Evdev", $"Successfully initialized virtual mouse. (code {result})");
+                    logger?.Debug("Scroll Bindings", $"Successfully initialized virtual mouse wheel. (code {result})");
                     break;
                 default:
-                    logger?.Write("Evdev", $"Failed to initialize virtual mouse. (error code {result})", LogLevel.Error);
+                    logger?.Write("Scroll Bindings", $"Failed to initialize virtual mouse wheel. (error code {result})", LogLevel.Error);
                     break;
             }
         }
@@ -59,6 +60,11 @@ namespace ScrollBinding.Lib.Devices
                 Device.Sync();
                 _dirty = false;
             }
+        }
+
+        public void Dispose()
+        {
+            Device.Dispose();
         }
 
         protected void SetDirty()
