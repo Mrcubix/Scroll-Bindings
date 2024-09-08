@@ -6,6 +6,8 @@ versions=("0.5.x" "0.6.x")
 
 if [ ! -d "build" ]; then
     mkdir build
+else
+    rm -rf build/*
 fi
 
 # ------------------------------ Functions ------------------------------ #
@@ -31,7 +33,7 @@ build_plugin() {
     echo "Building the plugin ($version)"
     echo ""
 
-    if ! dotnet publish ScrollBinding-$version -c Debug -o temp/$version --no-restore -v q
+    if ! dotnet publish ScrollBinding-$version -c Release -o temp/$version --no-restore -v q
     then
         echo "Failed to build the plugin"
         exit 1
