@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using OpenTabletDriver.Plugin;
 using OpenTabletDriver.Plugin.Attributes;
 using OpenTabletDriver.Plugin.Tablet;
@@ -13,7 +15,7 @@ public class BulletproofScrollBinding : ScrollBindingBase, IStateBinding
 
     public BulletproofScrollBinding() : base(new BulletproofLogger()) 
     {
-        if (ScrollBindingSettings.Instances.Count == 0)
+        if (ScrollBindingSettings.Instance == null)
             ScrollBindingSettings.SettingsChanged += OnSettingsChanged;
         else
             Initialize();
@@ -21,7 +23,7 @@ public class BulletproofScrollBinding : ScrollBindingBase, IStateBinding
 
     #region Properties
 
-    [Property("Property")]
+    [Property("Property"), PropertyValidated(nameof(ValidOptions))]
     public override string Property
     {
         get => _property;
@@ -38,7 +40,7 @@ public class BulletproofScrollBinding : ScrollBindingBase, IStateBinding
     [TabletReference]
     public TabletReference Tablet { get; set; }
 
-    public static IEnumerable<string> ValidButtons => _scrollDirections.Keys;
+    public static IEnumerable<string> ValidOptions => _scrollDirections.Keys;
 
     #endregion
 
@@ -46,11 +48,14 @@ public class BulletproofScrollBinding : ScrollBindingBase, IStateBinding
 
     public void Press(TabletReference tablet, IDeviceReport report) => Scroll();
 
-    public void Release(TabletReference tablet, IDeviceReport report) {}
+    public void Release(TabletReference tablet, IDeviceReport report) 
+    {
+        _scrolling = false;
+    }
 
     public override void Initialize()
     {
-        var settings = ScrollBindingSettings.Instances.FirstOrDefault(ins => ins.Tablet == Tablet) ?? new ScrollBindingSettings();
+        var settings = ScrollBindingSettings.Instance ?? new ScrollBindingSettings();
 
         _scrollAmount = _scrollDirection switch
         {

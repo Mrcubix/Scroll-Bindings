@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using OpenTabletDriver.Plugin;
 using OpenTabletDriver.Plugin.Attributes;
 using OpenTabletDriver.Plugin.Tablet;
@@ -18,7 +20,7 @@ public class ScrollBindingSettings : ITool
 
     public bool Initialize()
     {
-        Instances.Add(this);
+        Instance ??= this;
 
         SettingsChanged?.Invoke(this, EventArgs.Empty);
         
@@ -27,7 +29,7 @@ public class ScrollBindingSettings : ITool
 
     public void Dispose() 
     {
-        Instances.Remove(this);
+        Instance = null;
     }
 
     [Property("Scroll Delay"),
@@ -97,6 +99,6 @@ public class ScrollBindingSettings : ITool
         set => _rightScroll = Math.Max(0, Math.Min(2400, value));
     }
 
-    public static List<ScrollBindingSettings> Instances { get; } = new();
+    public static ScrollBindingSettings Instance { get; private set; }
     public static event EventHandler SettingsChanged;
 }
