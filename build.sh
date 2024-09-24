@@ -6,27 +6,9 @@ versions=("0.5.x" "0.6.x")
 
 if [ ! -d "build" ]; then
     mkdir build
-else
-    rm -rf build/*
 fi
 
 # ------------------------------ Functions ------------------------------ #
-
-create_plugin_structure() {
-    (
-        if [ ! -d "build" ]; then
-            mkdir build
-        fi
-
-        cd build
-
-        for version in "${versions[@]}"; do
-            if [ ! -d "./$version" ]; then
-                mkdir $version
-            fi
-        done
-    )
-}
 
 build_plugin() {
     echo ""
@@ -62,8 +44,6 @@ build_plugin() {
 
 # Re-create hashes.txt
 > "./build/hashes.txt"
-
-create_plugin_structure
 
 for version in "${versions[@]}"; do
 
