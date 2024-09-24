@@ -7,7 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="../.modules/OpenTabletDriver-0.6.x/OpenTabletDriver.Plugin/OpenTabletDriver.Plugin.csproj" />
+    <ProjectReference Include="../.modules/OpenTabletDriver-0.6.x/OpenTabletDriver.Plugin/OpenTabletDriver.Plugin.csproj" Private="False" />
     <ProjectReference Include="../ScrollBinding.Lib/ScrollBinding.Lib.csproj" />
   </ItemGroup>
 

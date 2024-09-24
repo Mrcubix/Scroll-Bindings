@@ -33,7 +33,7 @@ build_plugin() {
     echo "Building the plugin ($version)"
     echo ""
 
-    if ! dotnet publish ScrollBinding-$version -c Release -o temp/$version --no-restore -v q
+    if ! dotnet publish ScrollBinding-$version -c Release -o ./build/$version --no-restore -v q
     then
         echo "Failed to build the plugin"
         exit 1
@@ -43,17 +43,13 @@ build_plugin() {
     echo "Zipping the plugin ($version)"
     echo ""
 
-    mv temp/$version/ScrollBinding.dll build/$version/ScrollBinding.dll
-    mv temp/$version/ScrollBinding.pdb build/$version/ScrollBinding.pdb
-    mv temp/$version/ScrollBinding.Lib.dll build/$version/ScrollBinding.Lib.dll
-    mv temp/$version/ScrollBinding.Lib.pdb build/$version/ScrollBinding.Lib.pdb
-    mv temp/$version/ScrollBinding.Native.dll build/$version/ScrollBinding.Native.dll
-    mv temp/$version/ScrollBinding.Native.pdb build/$version/ScrollBinding.Native.pdb
-
     (
         cd ./build/$version
 
-        if ! zip -r ScrollBindings-$version.zip *
+        # .NET doesn't provide a way to a completely minimal publish, so we have to remove all the unnecessary files
+        rm ./*.deps.json
+
+        if ! zip -r ScrollBindings-$version.zip *.dll
         then
             echo "Failed to zip the plugin"
             exit 1

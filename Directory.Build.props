@@ -3,4 +3,8 @@
     <NoWarn>$(NoWarn); NETSDK1138</NoWarn>
     <NuGetAuditLevel>critical</NuGetAuditLevel>
   </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <DebugType>embedded</DebugType>
+  </PropertyGroup>
 </Project>
