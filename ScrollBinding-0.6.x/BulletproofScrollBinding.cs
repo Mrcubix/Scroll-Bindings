@@ -1,75 +1,40 @@
-using System;
-using System.Collections.Generic;
-using OpenTabletDriver.Plugin;
 using OpenTabletDriver.Plugin.Attributes;
-using OpenTabletDriver.Plugin.Tablet;
-using ScrollBinding.Lib.Enums;
 using ScrollBinding.Logging;
 
 namespace ScrollBinding;
 
 [PluginName("Scroll Bindings")]
-public class BulletproofScrollBinding : ScrollBindingBase, IStateBinding
+public class NewBulletproofScrollBinding : BulletproofScrollBinding
 {
-    private string _property = string.Empty;
-
-    public BulletproofScrollBinding() : base(new BulletproofLogger()) 
-    {
-        if (ScrollBindingSettings.Instance == null)
-            ScrollBindingSettings.SettingsChanged += OnSettingsChanged;
-        else
-            Initialize();
-    }
+    public NewBulletproofScrollBinding() : base(new BulletproofLogger()) {}
 
     #region Properties
 
-    [Property("Property"), PropertyValidated(nameof(ValidOptions))]
-    public override string Property
+    [Property("Scroll Delay"),
+     DefaultPropertyValue(15),
+     Unit("ms"),
+     ToolTip("Scroll Binding:\n\n" +
+             "The amount of delay between scrolls. \n" +
+             "A smaller value will result in a smoother but also faster scroll. \n\n" +
+             "Default: 15 ms | Range: 15 - 1000 ms")]
+    public int Delay
     {
-        get => _property;
-        set
-        {
-            if (_scrollDirections.ContainsKey(value))
-            {
-                _property = value;
-                _scrollDirection = _scrollDirections[value];
-            }
-        }
+        get => _scrollDelay;
+        set => _scrollDelay = Math.Max(15, Math.Min(1000, value));
     }
 
-    [TabletReference]
-    public TabletReference Tablet { get; set; }
-
-    public static IEnumerable<string> ValidOptions => _scrollDirections.Keys;
-
-    #endregion
-
-    #region Methods
-
-    public void Press(TabletReference tablet, IDeviceReport report) => Scroll();
-
-    public void Release(TabletReference tablet, IDeviceReport report) 
+    [Property("Amount"), 
+     DefaultPropertyValue(120),
+     ToolTip("Scroll Binding:\n\n" +
+             "The amount to scroll in the specified direction. \n" +
+             "Note: A tick equals to 120. \n" +
+             "Note: This will only affect target applications that supports high resolution scrolling. \n\n" +
+             "Default: 120 | Range: 0 - 2400")]
+    public int Amount
     {
-        _scrolling = false;
+        get => _scrollAmount;
+        set => _scrollAmount = Math.Max(0, Math.Min(2400, value));
     }
-
-    public override void Initialize()
-    {
-        var settings = ScrollBindingSettings.Instance ?? new ScrollBindingSettings();
-
-        _scrollAmount = _scrollDirection switch
-        {
-            ScrollDirection.Forward => settings.ForwardScroll,
-            ScrollDirection.Backward => settings.BackwardScroll,
-            ScrollDirection.Left => settings.LeftScroll,
-            ScrollDirection.Right => settings.RightScroll,
-            _ => 20
-        };
-
-        _scrollDelay = settings.ScrollDelay;
-    }
-
-    private void OnSettingsChanged(object sender, EventArgs e) => Initialize();
 
     #endregion
 }

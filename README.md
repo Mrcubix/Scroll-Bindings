@@ -11,8 +11,15 @@ This plugin provide bindings, allowing users to scroll vertically & horizontally
     <img src="docs/img/advanced_binding_editor.png">
 </p>
 
-3. Select Any of the options in Property,
-4. Press Apply.
+3. Select Any of the options in Property (And other settings if available),
+
+5. Press Apply.
+
+## How To Change Settings (in 0.6.x)
+
+You can change the settings in the Advanced Binding Editor.
+
+## How To Change Settings (in 0.5.x)
 
 To change speed, you may change the `Scroll delay` in Tools > Scroll Bindings Settings.
 
