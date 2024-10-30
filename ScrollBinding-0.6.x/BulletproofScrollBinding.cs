@@ -10,6 +10,17 @@ public class NewBulletproofScrollBinding : BulletproofScrollBinding
 
     #region Properties
 
+    [Property("Property"),
+     PropertyValidated(nameof(ValidOptions)),
+     ToolTip("Legacy Scroll Binding:\n\n" +
+             "The direction of the scroll. \n\n" +
+             "Note: Use 'Scroll Binding' instead as this legacy Plugin Type is depecrated & is only available for backwards compatibility.")]
+    public override string Property
+    {
+        get => base.Property;
+        set => base.Property = value;
+    }
+
     [Property("Scroll Delay"),
      DefaultPropertyValue(15),
      Unit("ms"),
@@ -35,6 +46,8 @@ public class NewBulletproofScrollBinding : BulletproofScrollBinding
         get => _scrollAmount;
         set => _scrollAmount = Math.Max(0, Math.Min(2400, value));
     }
+
+    public static new IEnumerable<string> ValidOptions => BulletproofScrollBinding.ValidOptions;
 
     #endregion
 }
