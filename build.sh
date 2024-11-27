@@ -31,7 +31,7 @@ build_plugin() {
         # .NET doesn't provide a way to a completely minimal publish, so we have to remove all the unnecessary files
         rm ./*.deps.json
 
-        if ! zip -r ScrollBindings-$version.zip *.dll
+        if ! zip -r ScrollBindings-$version.zip ScrollBinding*.dll
         then
             echo "Failed to zip the plugin"
             exit 1
