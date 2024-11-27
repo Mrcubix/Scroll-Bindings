@@ -44,7 +44,7 @@ public class ScrollBindingSettings : ITool
     public int ScrollDelay
     {
         get => _scrollDelay;
-        set => _scrollDelay = Math.Max(15, Math.Min(1000, value));
+        set => _scrollDelay = Math.Max(1, Math.Min(1000, value));
     }
 
     [Property("Forward Scroll"),

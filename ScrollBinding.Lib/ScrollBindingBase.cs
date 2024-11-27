@@ -40,35 +40,32 @@ public abstract class ScrollBindingBase : IDisposable
         if (Wheel == null || _scrolling) return;
 
         _scrolling = true;
-        _ = Task.Run(StartScrolling);
+        ScrollContinuously();
     }
 
-    protected virtual async Task StartScrolling()
+    protected abstract void ScrollContinuously();
+
+    protected void ScrollOnce()
     {
-        while (_scrolling)
+        switch (_scrollDirection)
         {
-            switch (_scrollDirection)
-            {
-                case ScrollDirection.Forward:
-                    Wheel.ScrollVertically(_scrollAmount);
-                    break;
-                case ScrollDirection.Backward:
-                    Wheel.ScrollVertically(_scrollAmount * -1);
-                    break;
-                case ScrollDirection.Left:
-                    Wheel.ScrollHorizontally(_scrollAmount * -1);
-                    break;
-                case ScrollDirection.Right:
-                    Wheel.ScrollHorizontally(_scrollAmount);
-                    break;
-                default:
-                    break;
-            }
-
-            Wheel.Flush();
-
-            await Task.Delay(_scrollDelay);
+            case ScrollDirection.Forward:
+                Wheel.ScrollVertically(_scrollAmount);
+                break;
+            case ScrollDirection.Backward:
+                Wheel.ScrollVertically(_scrollAmount * -1);
+                break;
+            case ScrollDirection.Left:
+                Wheel.ScrollHorizontally(_scrollAmount * -1);
+                break;
+            case ScrollDirection.Right:
+                Wheel.ScrollHorizontally(_scrollAmount);
+                break;
+            default:
+                break;
         }
+
+        Wheel.Flush();
     }
 
     public void Dispose()

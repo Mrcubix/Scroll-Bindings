@@ -3,10 +3,12 @@
   <PropertyGroup>
     <TargetFramework>net5.0</TargetFramework>
     <LangVersion>preview</LangVersion>
+    <DisableTransitiveProjectReferences>true</DisableTransitiveProjectReferences>
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="../.modules/OpenTabletDriver/OpenTabletDriver.Plugin/OpenTabletDriver.Plugin.csproj" Private="False" />
+    <ProjectReference Include="../.modules/OpenTabletDriver/OpenTabletDriver.Desktop/OpenTabletDriver.Desktop.csproj" Private="False" Publish="False"/>
+    <ProjectReference Include="../.modules/OpenTabletDriver/OpenTabletDriver.Plugin/OpenTabletDriver.Plugin.csproj" Private="False"/>
     <ProjectReference Include="../ScrollBinding.Lib/ScrollBinding.Lib.csproj" />
   </ItemGroup>
 

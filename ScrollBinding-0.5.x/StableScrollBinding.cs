@@ -1,7 +1,9 @@
 using System;
 using System.Linq;
+using OpenTabletDriver.Desktop.Interop;
 using OpenTabletDriver.Plugin;
 using OpenTabletDriver.Plugin.Attributes;
+using OpenTabletDriver.Plugin.Timers;
 using ScrollBinding.Lib.Enums;
 using ScrollBinding.Logging;
 
@@ -10,6 +12,7 @@ namespace ScrollBinding;
 [PluginName("Scroll Bindings")]
 public class StableScrollBinding : ScrollBindingBase, IValidateBinding, IBinding
 {
+    private ITimer _timer = SystemInterop.Timer;
     private string _property = string.Empty;
 
     public StableScrollBinding() : base(new StableLogger()) 
@@ -44,7 +47,11 @@ public class StableScrollBinding : ScrollBindingBase, IValidateBinding, IBinding
 
     public Action Press => Scroll;
 
-    public Action Release => () => _scrolling = false;
+    public Action Release => () => 
+    {
+        _scrolling = false;
+        _timer.Stop();
+    };
 
     #endregion
 
@@ -64,7 +71,12 @@ public class StableScrollBinding : ScrollBindingBase, IValidateBinding, IBinding
         };
 
         _scrollDelay = settings.ScrollDelay;
+
+        if (_timer != null)
+            _timer.Interval = _scrollDelay;
     }
+
+    protected override void ScrollContinuously() => _timer.Start();
 
     private void OnSettingsChanged(object sender, EventArgs e) => Initialize();
 

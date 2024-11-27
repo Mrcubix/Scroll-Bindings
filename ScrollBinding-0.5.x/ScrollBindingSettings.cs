@@ -38,13 +38,13 @@ public class ScrollBindingSettings : ITool
      ToolTip("Scroll Binding:\n\n" +
              "The amount of delay between scrolls. \n" +
              "A smaller value will result in a smoother but also faster scroll. \n\n" +
-             "Minimum: 15 ms \n" +
+             "Minimum: 1 ms \n" +
              "Maximum: 1000 ms \n" +
              "Default: 15 ms")]
     public int ScrollDelay
     {
         get => _scrollDelay;
-        set => _scrollDelay = Math.Max(15, Math.Min(1000, value));
+        set => _scrollDelay = Math.Clamp(value, 1, 1000);
     }
 
     [Property("Forward Scroll"),
@@ -57,7 +57,7 @@ public class ScrollBindingSettings : ITool
     public int ForwardScroll
     {
         get => _forwardScroll;
-        set => _forwardScroll = Math.Max(0, Math.Min(2400, value));
+        set => _forwardScroll = Math.Clamp(value, 0, 2400);
     }
 
     [Property("Backward Scroll"),
@@ -70,7 +70,7 @@ public class ScrollBindingSettings : ITool
     public int BackwardScroll
     {
         get => _backwardScroll;
-        set => _backwardScroll = Math.Max(0, Math.Min(2400, value));
+        set => _backwardScroll = Math.Clamp(value, 0, 2400);
     }
 
     [Property("Left Scroll"),
@@ -83,7 +83,7 @@ public class ScrollBindingSettings : ITool
     public int LeftScroll
     {
         get => _leftScroll;
-        set => _leftScroll = Math.Max(0, Math.Min(2400, value));
+        set => _leftScroll = Math.Clamp(value, 0, 2400);
     }
 
     [Property("Right Scroll"),
@@ -96,7 +96,7 @@ public class ScrollBindingSettings : ITool
     public int RightScroll
     {
         get => _rightScroll;
-        set => _rightScroll = Math.Max(0, Math.Min(2400, value));
+        set => _rightScroll = Math.Clamp(value, 0, 2400);
     }
 
     #endregion

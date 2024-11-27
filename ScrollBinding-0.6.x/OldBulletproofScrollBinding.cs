@@ -1,6 +1,8 @@
 using OpenTabletDriver.Plugin;
 using OpenTabletDriver.Plugin.Attributes;
+using OpenTabletDriver.Plugin.DependencyInjection;
 using OpenTabletDriver.Plugin.Tablet;
+using OpenTabletDriver.Plugin.Timers;
 using ScrollBinding.Lib.Enums;
 using ScrollBinding.Lib.Interfaces;
 using ScrollBinding.Logging;
@@ -11,6 +13,7 @@ namespace ScrollBinding;
 public class BulletproofScrollBinding : ScrollBindingBase, IStateBinding
 {
     private string _property = string.Empty;
+    protected ITimer _timer;
 
     public BulletproofScrollBinding() : base(new BulletproofLogger()) 
     {
@@ -45,6 +48,22 @@ public class BulletproofScrollBinding : ScrollBindingBase, IStateBinding
     [TabletReference]
     public TabletReference Tablet { get; set; }
 
+    [Resolved]
+    public ITimer Timer
+    {
+        get => _timer;
+        set
+        {
+            _timer = value;
+
+            if (_timer != null)
+            {
+                _timer.Interval = _scrollDelay;
+                _timer.Elapsed += ScrollOnce;
+            }
+        }
+    }
+
     public static IEnumerable<string> ValidOptions => _scrollDirections.Keys;
 
     #endregion
@@ -56,6 +75,7 @@ public class BulletproofScrollBinding : ScrollBindingBase, IStateBinding
     public void Release(TabletReference tablet, IDeviceReport report) 
     {
         _scrolling = false;
+        _timer?.Stop();
     }
 
     public override void Initialize()
@@ -72,7 +92,12 @@ public class BulletproofScrollBinding : ScrollBindingBase, IStateBinding
         };
 
         _scrollDelay = settings.ScrollDelay;
+
+        if (_timer != null)
+            _timer.Interval = _scrollDelay;
     }
+
+    protected override void ScrollContinuously() => _timer?.Start();
 
     private void OnSettingsChanged(object sender, EventArgs e) => Initialize();
 
