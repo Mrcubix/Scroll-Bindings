@@ -21,6 +21,8 @@ public class StableScrollBinding : ScrollBindingBase, IValidateBinding, IBinding
             ScrollBindingSettings.SettingsChanged += OnSettingsChanged;
         else
             Initialize();
+
+        _timer.Elapsed += ScrollOnce;
     }
 
     #region Properties
@@ -71,9 +73,7 @@ public class StableScrollBinding : ScrollBindingBase, IValidateBinding, IBinding
         };
 
         _scrollDelay = settings.ScrollDelay;
-
-        if (_timer != null)
-            _timer.Interval = _scrollDelay;
+        _timer.Interval = _scrollDelay;
     }
 
     protected override void ScrollContinuously() => _timer.Start();

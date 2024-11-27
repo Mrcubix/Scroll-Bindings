@@ -44,7 +44,11 @@ public class ScrollBindingSettings : ITool
     public int ScrollDelay
     {
         get => _scrollDelay;
-        set => _scrollDelay = Math.Clamp(value, 1, 1000);
+        set
+        {
+            _scrollDelay = Math.Clamp(value, 1, 1000);
+            SettingsChanged?.Invoke(this, EventArgs.Empty);
+        }
     }
 
     [Property("Forward Scroll"),
@@ -57,7 +61,11 @@ public class ScrollBindingSettings : ITool
     public int ForwardScroll
     {
         get => _forwardScroll;
-        set => _forwardScroll = Math.Clamp(value, 0, 2400);
+        set
+        {
+            _forwardScroll = Math.Clamp(value, 0, 2400);
+            SettingsChanged?.Invoke(this, EventArgs.Empty);
+        }
     }
 
     [Property("Backward Scroll"),
@@ -70,7 +78,11 @@ public class ScrollBindingSettings : ITool
     public int BackwardScroll
     {
         get => _backwardScroll;
-        set => _backwardScroll = Math.Clamp(value, 0, 2400);
+        set
+        {
+            _backwardScroll = Math.Clamp(value, 0, 2400);
+            SettingsChanged?.Invoke(this, EventArgs.Empty);
+        }
     }
 
     [Property("Left Scroll"),
@@ -83,7 +95,11 @@ public class ScrollBindingSettings : ITool
     public int LeftScroll
     {
         get => _leftScroll;
-        set => _leftScroll = Math.Clamp(value, 0, 2400);
+        set
+        {
+            _leftScroll = Math.Clamp(value, 0, 2400);
+            SettingsChanged?.Invoke(this, EventArgs.Empty);
+        }
     }
 
     [Property("Right Scroll"),
@@ -96,7 +112,11 @@ public class ScrollBindingSettings : ITool
     public int RightScroll
     {
         get => _rightScroll;
-        set => _rightScroll = Math.Clamp(value, 0, 2400);
+        set
+        {
+            _rightScroll = Math.Clamp(value, 0, 2400);
+            SettingsChanged?.Invoke(this, EventArgs.Empty);
+        }
     }
 
     #endregion
