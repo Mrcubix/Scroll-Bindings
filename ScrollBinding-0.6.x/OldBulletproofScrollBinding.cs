@@ -75,7 +75,7 @@ public class BulletproofScrollBinding : ScrollBindingBase, IStateBinding
     public void Release(TabletReference tablet, IDeviceReport report) 
     {
         _scrolling = false;
-        _timer?.Stop();
+        _timer.Stop();
     }
 
     public override void Initialize()
@@ -92,12 +92,10 @@ public class BulletproofScrollBinding : ScrollBindingBase, IStateBinding
         };
 
         _scrollDelay = settings.ScrollDelay;
-
-        if (_timer != null)
-            _timer.Interval = _scrollDelay;
+        _timer.Interval = _scrollDelay;
     }
 
-    protected override void ScrollContinuously() => _timer?.Start();
+    protected override void ScrollContinuously() => _timer.Start();
 
     private void OnSettingsChanged(object sender, EventArgs e) => Initialize();
 
