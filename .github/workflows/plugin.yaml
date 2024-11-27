@@ -39,12 +39,12 @@ jobs:
       with:
         name: "ScrollBinding-0.5.x"
         path: |
-          ./build/0.5.x/*.dll
+          ./build/0.5.x/ScrollBinding*.dll
           !./build/0.5.x/*.pdb
 
     - uses: actions/upload-artifact@main
       with:
         name: "ScrollBinding-0.6.x"
         path: |
-          ./build/0.6.x/*.dll
+          ./build/0.6.x/ScrollBinding*.dll
           !./build/0.6.x/*.pdb
