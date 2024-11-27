@@ -44,7 +44,11 @@ public class ScrollBindingSettings : ITool
     public int ScrollDelay
     {
         get => _scrollDelay;
-        set => _scrollDelay = Math.Max(1, Math.Min(1000, value));
+        set
+        {
+            _scrollDelay = Math.Max(1, Math.Min(1000, value));
+            SettingsChanged?.Invoke(this, EventArgs.Empty);
+        }
     }
 
     [Property("Forward Scroll"),
@@ -57,7 +61,11 @@ public class ScrollBindingSettings : ITool
     public int ForwardScroll
     {
         get => _forwardScroll;
-        set => _forwardScroll = Math.Max(0, Math.Min(2400, value));
+        set
+        {
+            _forwardScroll = Math.Max(0, Math.Min(2400, value));
+            SettingsChanged?.Invoke(this, EventArgs.Empty);
+        }
     }
 
     [Property("Backward Scroll"),
@@ -70,7 +78,11 @@ public class ScrollBindingSettings : ITool
     public int BackwardScroll
     {
         get => _backwardScroll;
-        set => _backwardScroll = Math.Max(0, Math.Min(2400, value));
+        set
+        {
+            _backwardScroll = Math.Max(0, Math.Min(2400, value));
+            SettingsChanged?.Invoke(this, EventArgs.Empty);
+        }
     }
 
     [Property("Left Scroll"),
@@ -83,7 +95,11 @@ public class ScrollBindingSettings : ITool
     public int LeftScroll
     {
         get => _leftScroll;
-        set => _leftScroll = Math.Max(0, Math.Min(2400, value));
+        set
+        {
+            _leftScroll = Math.Max(0, Math.Min(2400, value));
+            SettingsChanged?.Invoke(this, EventArgs.Empty);
+        }
     }
 
     [Property("Right Scroll"),
@@ -96,7 +112,11 @@ public class ScrollBindingSettings : ITool
     public int RightScroll
     {
         get => _rightScroll;
-        set => _rightScroll = Math.Max(0, Math.Min(2400, value));
+        set
+        {
+            _rightScroll = Math.Max(0, Math.Min(2400, value));
+            SettingsChanged?.Invoke(this, EventArgs.Empty);
+        }
     }
 
     public static ScrollBindingSettings Instance { get; private set; }
