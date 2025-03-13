@@ -84,6 +84,7 @@ public abstract class ScrollBindingBase : IDisposable
     {
         PluginPlatform.Windows => new WindowsMouseWheel(),
         PluginPlatform.Linux => new LinuxMouseWheel(Logger),
+        PluginPlatform.MacOS => new MacOSMouseWheel(),
         _ => null
     };
 

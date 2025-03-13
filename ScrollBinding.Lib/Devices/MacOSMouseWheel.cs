@@ -1,31 +1,38 @@
 using System;
 using ScrollBinding.Lib.Interfaces;
+using ScrollBinding.Native.OSX;
+using ScrollBinding.Native.OSX.Input;
 
 namespace ScrollBinding.Lib.Devices
 {
     public class MacOSMouseWheel : IMouseWheel
     {
-        #pragma warning disable CS0414
         private bool _dirty;
 
-        public MacOSMouseWheel(ILogger logger)
-        {
-            throw new NotImplementedException();
-        }
+        int dx, dy;
 
         public void ScrollVertically(int amount)
         {
-            throw new NotImplementedException();
+            dy = -amount;
+            SetDirty();
         }
 
         public void ScrollHorizontally(int amount)
         {
-            throw new NotImplementedException();
+            dx = -amount;
+            SetDirty();
         }
 
         public void Flush()
         {
-            throw new NotImplementedException();
+            if (_dirty)
+            {
+                var eventRef = OSX.CGEventCreateScrollWheelEvent2(IntPtr.Zero, CGScrollEventUnit.kCGScrollEventUnitPixel, 2, dy, dx, 0);
+                OSX.CGEventPost(CGEventTapLocation.kCGHIDEventTap, eventRef);
+                OSX.CFRelease(eventRef);
+                _dirty = false;
+                dx = dy = 0;
+            }
         }
 
         protected void SetDirty()
