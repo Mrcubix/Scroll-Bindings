@@ -22,7 +22,7 @@ public class StableScrollBinding : ScrollBindingBase, IValidateBinding, IBinding
         else
             Initialize();
 
-        _timer.Elapsed += ScrollOnce;
+        _timer.Elapsed += Scroll;
     }
 
     #region Properties
@@ -47,7 +47,7 @@ public class StableScrollBinding : ScrollBindingBase, IValidateBinding, IBinding
 
     #region Actions
 
-    public Action Press => Scroll;
+    public Action Press => StartScrolling;
 
     public Action Release => () => 
     {

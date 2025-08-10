@@ -35,17 +35,18 @@ public abstract class ScrollBindingBase : IDisposable
 
     public abstract void Initialize();
 
-    public void Scroll()
+    public void StartScrolling()
     {
         if (Wheel == null || _scrolling) return;
 
         _scrolling = true;
+        Scroll();
         ScrollContinuously();
     }
 
     protected abstract void ScrollContinuously();
 
-    protected void ScrollOnce()
+    protected void Scroll()
     {
         switch (_scrollDirection)
         {

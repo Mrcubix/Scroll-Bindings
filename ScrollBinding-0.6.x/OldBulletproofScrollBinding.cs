@@ -59,7 +59,7 @@ public class BulletproofScrollBinding : ScrollBindingBase, IStateBinding
             if (_timer != null)
             {
                 _timer.Interval = _scrollDelay;
-                _timer.Elapsed += ScrollOnce;
+                _timer.Elapsed += Scroll;
             }
         }
     }
@@ -70,7 +70,7 @@ public class BulletproofScrollBinding : ScrollBindingBase, IStateBinding
 
     #region Methods
 
-    public void Press(TabletReference tablet, IDeviceReport report) => Scroll();
+    public void Press(TabletReference tablet, IDeviceReport report) => StartScrolling();
 
     public void Release(TabletReference tablet, IDeviceReport report) 
     {
