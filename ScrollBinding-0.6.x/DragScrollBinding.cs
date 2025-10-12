@@ -3,7 +3,6 @@ using OpenTabletDriver;
 using OpenTabletDriver.Plugin;
 using OpenTabletDriver.Plugin.Attributes;
 using OpenTabletDriver.Plugin.DependencyInjection;
-using OpenTabletDriver.Plugin.Output;
 using OpenTabletDriver.Plugin.Tablet;
 using OpenTabletDriver.Plugin.Timers;
 using ScrollBinding.Lib.Interfaces;
@@ -15,14 +14,11 @@ public sealed class DragScrollBinding : IStateBinding, IEquatable<DragScrollBind
 {
     #region Fields
 
-    private static readonly DragScrollingElement _element = new();
-    private readonly static object _lock = new();
-    private static bool _sharedInitialized;
-
     private const double INTERVAL_MILLISECONDS = 1;
     private const double INTERVAL_SECONDS = INTERVAL_MILLISECONDS / 1000;
 
     private readonly IMouseWheel Wheel = ScrollBindingBase.CurrentPlatformWheel;
+    private InputDeviceTree _inputDeviceTree;
     private Vector<double> _currentVelocity = new([0d, 0d, 0d, 0d]);
     private double[] _currentVelocityArray = [0, 0, 0, 0];
     private TabletReference _tablet;
@@ -47,7 +43,7 @@ public sealed class DragScrollBinding : IStateBinding, IEquatable<DragScrollBind
             if (_timer != null)
             {
                 _timer.Interval = (float)INTERVAL_MILLISECONDS;
-                _timer.Elapsed += OnElasped;
+                _timer.Elapsed += IntervalElapsed;
                 _timer.Start();
             }
         }
@@ -63,7 +59,7 @@ public sealed class DragScrollBinding : IStateBinding, IEquatable<DragScrollBind
         set
         {
             _tablet = value;
-            _ = Task.Run(InitializeAsync);
+            Initialize();
         }
     }
 
@@ -95,37 +91,40 @@ public sealed class DragScrollBinding : IStateBinding, IEquatable<DragScrollBind
 
     #region Methods
 
-    // It has to be done async as we need to wait for the driver to set elements in the output mode which is done after Constructing bindings then filters
-    public async Task InitializeAsync()
+    #region Input
+
+    public void Initialize()
     {
-        if (_element.Bindings.Contains(this) == false)
-            _element.Bindings.Add(this);
-
-        while (_sharedInitialized == false)
+        if (Driver is Driver driver)
         {
-            if (Driver is Driver driver)
+            InputDeviceTree tree = driver.InputDevices.FirstOrDefault(dev => dev.OutputMode.Tablet == _tablet);
+
+            if (tree == null)
             {
-                IOutputMode outputMode = driver.InputDevices.Where(dev => dev.OutputMode.Tablet == _tablet)
-                                                            .Select(dev => dev.OutputMode)
-                                                            .FirstOrDefault();
+                Log.Write("Drag Scroll Binding", "Failed to find the tree associated with the Tablet Reference.");
+                return;
+            }
 
-                if (outputMode != null && outputMode.Elements != null && outputMode.Elements.Count != 0)
-                {
-                    lock (_lock)
-                    {
-                        if (outputMode.Elements.OfType<DragScrollingElement>().Any() == false)
-                        {
-                            outputMode.Elements.Add(_element);
-                            outputMode.Elements = outputMode.Elements;
-                        }
+            if (tree.InputDevices.Count == 0)
+            {
+                Log.Write("Drag Scroll Binding", "Failed to find any input devices.");
+                return;
+            }
 
-                        _sharedInitialized = true;
-                    }
-                }
-                else
-                    await Task.Delay(15);
+            _inputDeviceTree = tree;
+
+            foreach (InputDevice inputDevice in tree.InputDevices)
+            {
+                inputDevice.RawClone = true;
+                inputDevice.RawReport += Consume;
             }
         }
+    }
+
+    public void Consume(object sender, IDeviceReport report)
+    {
+        if (_pressing && report is IAbsolutePositionReport positionReport)
+            Scroll(positionReport);
     }
 
     public void Press(TabletReference tablet, IDeviceReport report)
@@ -139,6 +138,8 @@ public sealed class DragScrollBinding : IStateBinding, IEquatable<DragScrollBind
     {
         _pressing = false;
     }
+
+    #endregion
 
     public void Scroll(IDeviceReport report)
     {
@@ -198,7 +199,7 @@ public sealed class DragScrollBinding : IStateBinding, IEquatable<DragScrollBind
 
     #region Event Handlers
 
-    public void OnElasped()
+    public void IntervalElapsed()
     {
         _deltaTime += (ulong)Timer.Interval;
 
@@ -227,60 +228,32 @@ public sealed class DragScrollBinding : IStateBinding, IEquatable<DragScrollBind
                InvertScroll == other.InvertScroll;
     }
 
-    public override bool Equals(object obj) 
+    public override bool Equals(object obj)
         => obj is DragScrollBinding binding && Equals(binding);
 
     public override int GetHashCode() => base.GetHashCode();
 
     public void Dispose()
     {
-        _sharedInitialized = false;
-
         if (_timer != null)
         {
-            _timer.Elapsed -= OnElasped;
+            _timer.Elapsed -= IntervalElapsed;
             _timer.Stop();
             _timer.Dispose();
             _timer = null;
         }
-    }
 
-    #endregion
-
-    #endregion
-}
-
-#region Pipeline Element
-
-[PluginIgnore]
-public sealed class DragScrollingElement : IPositionedPipelineElement<IDeviceReport>, IDisposable
-{
-    private readonly object _lock = new();
-
-    public event Action<IDeviceReport> Emit;
-
-    public PipelinePosition Position => PipelinePosition.PostTransform;
-    public List<DragScrollBinding> Bindings { get; } = new();
-
-    public void Consume(IDeviceReport report)
-    {
-        if (report is OutOfRangeReport || report is IAbsolutePositionReport)
-            lock (_lock)
-                foreach (var binding in Bindings)
-                    binding.Scroll(report);
-        Emit?.Invoke(report);
-    }
-
-    public void Dispose()
-    {
-        lock (_lock)
+        if (_inputDeviceTree != null)
         {
-            foreach (var binding in Bindings)
-                binding.Dispose();
-
-            Bindings.Clear();
+            foreach (InputDevice inputDevice in _inputDeviceTree.InputDevices)
+            {
+                inputDevice.RawClone = false;
+                inputDevice.RawReport -= Consume;
+            }
         }
     }
-}
 
-#endregion
+    #endregion
+
+    #endregion
+}
