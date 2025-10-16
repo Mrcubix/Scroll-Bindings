@@ -10,7 +10,7 @@ using ScrollBinding.Lib.Interfaces;
 namespace ScrollBinding;
 
 [PluginName("Drag Scroll")]
-public sealed class DragScrollBinding : IStateBinding, IEquatable<DragScrollBinding>, IDisposable
+public sealed class DragScrollBinding : IStateBinding, IDisposable
 {
     #region Fields
 
@@ -218,20 +218,6 @@ public sealed class DragScrollBinding : IStateBinding, IEquatable<DragScrollBind
         _toolActive = false;
         _deltaTime = 0;
     }
-
-    public bool Equals(DragScrollBinding other)
-    {
-        return this == other ||
-               other != null &&
-               Sensitivity == other.Sensitivity &&
-               Deceleration == other.Deceleration &&
-               InvertScroll == other.InvertScroll;
-    }
-
-    public override bool Equals(object obj)
-        => obj is DragScrollBinding binding && Equals(binding);
-
-    public override int GetHashCode() => base.GetHashCode();
 
     public void Dispose()
     {
