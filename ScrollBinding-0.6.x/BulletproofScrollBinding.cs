@@ -3,7 +3,7 @@ using ScrollBinding.Logging;
 
 namespace ScrollBinding;
 
-[PluginName("Scroll Bindings")]
+[PluginName("Scroll Bindings (Obselete)")]
 public class NewBulletproofScrollBinding : BulletproofScrollBinding
 {
     public NewBulletproofScrollBinding() : base(new BulletproofLogger()) {}

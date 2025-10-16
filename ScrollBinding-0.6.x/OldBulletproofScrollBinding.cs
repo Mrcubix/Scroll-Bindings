@@ -9,7 +9,7 @@ using ScrollBinding.Logging;
 
 namespace ScrollBinding;
 
-[PluginName("Lagacy Scroll Bindings")]
+[PluginName("Lagacy Scroll Bindings (Obselete)")]
 public class BulletproofScrollBinding : ScrollBindingBase, IStateBinding
 {
     private string _property = string.Empty;
