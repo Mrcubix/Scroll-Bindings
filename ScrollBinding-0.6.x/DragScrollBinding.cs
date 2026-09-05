@@ -106,18 +106,37 @@ public sealed class DragScrollBinding : IStateBinding, IDisposable
              "When enabled, this effectively prevents scrolling when hovering over the tablet.")]
     public bool ScrollOnDrag { get; set; } = true;
 
-    [SliderProperty("Tip Activation Threshold", 0f, 100f, 1f),
+    [SliderProperty("Pressure Threshold", 0f, 100f, 1f),
      DefaultPropertyValue(1f),
+     Unit("%"),
      ToolTip("Drag Scroll Binding:\n\n" +
-             "The pressure threshold for the drag scroll binding. Only scroll when the pressure is greater than the user defined threshold.\n" +
+             "Only scroll when the pressure is greater than the user defined threshold.\n" +
              "Only takes effect when a pen is used & Require Pressure is enabled.")]
-    public float TipActivationThreshold { get; set; }
+    public float PressureThreshold { get; set; }
 
-    [BooleanProperty("Static position while scrolling", ""),
+    [BooleanProperty("Freeze Cursor", ""),
      DefaultPropertyValue(true),
      ToolTip("Drag Scroll Binding:\n\n" +
              "The cursor will remain at the same position while scrolling.")]
-    public bool StaticPositionWhileScrolling { get; set; } = true;
+    public bool FrozenCursor { get; set; } = true;
+
+    #region Obsolete Properties
+
+    [Obsolete("TipActivationThreshold has been renamed to PressureThreshold")]
+    public float TipActivationThreshold
+    {
+        get => PressureThreshold;
+        set => PressureThreshold = value;
+    }
+
+    [Obsolete("StaticPositionWhileScrolling has been renamed to FrozenCursor")]
+    public bool StaticPositionWhileScrolling
+    {
+        get => FrozenCursor;
+        set => FrozenCursor = value;
+    }
+
+    #endregion
 
     #endregion
 
@@ -151,8 +170,8 @@ public sealed class DragScrollBinding : IStateBinding, IDisposable
         _filter?.PositionChanged += Consume;
 
         if (_filter == null)
-            Log.Write("Drag Scroll Binding", $"Failed to find Scroll Binding Filter in the pipeline for '{_tablet?.Properties.Name}' \n." +
-                                              "Enabling 'Scroll Binding Filter' in the Filter tab is required for Drag Scrolling to work.\n", 
+            Log.Write("Drag Scroll Binding", $"Failed to find Scroll Binding Filter in the pipeline for '{_tablet?.Properties.Name}'.\n" +
+                                              "Enabling 'Scroll Binding Filter' in the Filter tab is required for Drag Scrolling to work.", 
                                               LogLevel.Error, false, true);
         else
             _postinitialized = true;
@@ -170,7 +189,7 @@ public sealed class DragScrollBinding : IStateBinding, IDisposable
 
             _lastPositionCopy ??= new Vector2(positionReport.Position.X, positionReport.Position.Y);
 
-            if (StaticPositionWhileScrolling)
+            if (FrozenCursor)
             {
                 positionReport.Position = (Vector2)_lastPositionCopy;
                 if (positionReport is ITabletReport tabletReport)
@@ -183,7 +202,7 @@ public sealed class DragScrollBinding : IStateBinding, IDisposable
     {
         switch (report)
         {
-            case ITabletReport tabletReport when !ScrollOnDrag || ((float)tabletReport.Pressure / (float)_PenMaxPressure * 100f) > TipActivationThreshold:
+            case ITabletReport tabletReport when !ScrollOnDrag || ((float)tabletReport.Pressure / (float)_PenMaxPressure * 100f) > PressureThreshold:
                 Scroll(tabletReport);
                 break;
             case IMouseReport mouseReport:
