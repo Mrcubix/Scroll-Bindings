@@ -151,7 +151,8 @@ public sealed class DragScrollBinding : IStateBinding, IDisposable
         _filter?.PositionChanged += Consume;
 
         if (_filter == null)
-            Log.Write("Drag Scroll Binding", $"Failed to find Scroll Binding Filter in the pipeline for '{_tablet?.Properties.Name}'.", LogLevel.Error);
+            Log.Write("Drag Scroll Binding", $"Failed to find Scroll Binding Filter in the pipeline for '{_tablet?.Properties.Name}' \n." +
+                                              "This is required for Drag Scrolling to work.\n", LogLevel.Error, false, true);
         else
             _postinitialized = true;
     }
