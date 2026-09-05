@@ -46,7 +46,7 @@ public abstract class ScrollBindingBase : IDisposable
 
     protected abstract void ScrollContinuously();
 
-    protected void Scroll()
+    protected virtual void Scroll()
     {
         switch (_scrollDirection)
         {
