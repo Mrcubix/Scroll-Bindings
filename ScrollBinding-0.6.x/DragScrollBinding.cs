@@ -190,11 +190,10 @@ public sealed class DragScrollBinding : IStateBinding, IDisposable
             _lastPositionCopy ??= new Vector2(positionReport.Position.X, positionReport.Position.Y);
 
             if (FrozenCursor)
-            {
                 positionReport.Position = (Vector2)_lastPositionCopy;
-                if (positionReport is ITabletReport tabletReport)
-                    tabletReport.Pressure = 0;
-            }
+
+            if (positionReport is ITabletReport tabletReport)
+                tabletReport.Pressure = 0;
         }
     }
 
