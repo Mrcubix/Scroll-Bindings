@@ -22,6 +22,18 @@ namespace ScrollBinding.Lib.Devices
                         dwExtraInfo = UIntPtr.Zero
                     }
                 }
+            },
+            new INPUT
+            {
+                type = INPUT_TYPE.INPUT_MOUSE,
+                Anonymous = new()
+                {
+                    mi = new MOUSEINPUT
+                    {
+                        time = 0,
+                        dwExtraInfo = UIntPtr.Zero
+                    }
+                }
             }
         };
 
@@ -37,8 +49,8 @@ namespace ScrollBinding.Lib.Devices
         {
             SetDirty();
 
-            inputs[0].Anonymous.mi.dwFlags |= MOUSE_EVENT_FLAGS.MOUSEEVENTF_HWHEEL | MOUSE_EVENT_FLAGS.MOUSEEVENTF_VIRTUALDESK;
-            inputs[0].Anonymous.mi.mouseData = (uint)amount;
+            inputs[1].Anonymous.mi.dwFlags |= MOUSE_EVENT_FLAGS.MOUSEEVENTF_HWHEEL | MOUSE_EVENT_FLAGS.MOUSEEVENTF_VIRTUALDESK;
+            inputs[1].Anonymous.mi.mouseData = (uint)amount;
         }
 
         public void Flush()
@@ -47,9 +59,12 @@ namespace ScrollBinding.Lib.Devices
             {
                 PInvoke.SendInput(inputs, sizeof(INPUT));
 
-                inputs[0].Anonymous.mi.dwFlags = 0;
-                inputs[0].Anonymous.mi.mouseData = 0;
-                
+                for (int i = 0; i < inputs.Length; i++)
+                {
+                    inputs[i].Anonymous.mi.dwFlags = 0;
+                    inputs[i].Anonymous.mi.mouseData = 0;
+                }
+
                 _dirty = false;
             }
         }
