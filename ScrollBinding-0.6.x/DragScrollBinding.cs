@@ -12,7 +12,7 @@ using ITimer = OpenTabletDriver.Plugin.Timers.ITimer;
 
 namespace ScrollBinding;
 
-[PluginName("Drag Scroll")]
+[PluginName("Pen Scroll")]
 public sealed class DragScrollBinding : IStateBinding, IDisposable
 {
     #region Fields
@@ -76,11 +76,11 @@ public sealed class DragScrollBinding : IStateBinding, IDisposable
         }
     }
 
-    /*[Property("X Sensitivity"),
+    [Property("X Sensitivity"),
      DefaultPropertyValue(0.5d),
      ToolTip("Drag Scroll Binding:\n\n" +
              "The horizontal sensitivity of the drag scroll binding. Higher values will result in faster scrolling." +
-             "Horizontal scrolling cannot be properly supported on Windows due to SendInput limitations.")]*/
+             "Horizontal scrolling cannot be properly supported on Windows due to SendInput limitations.")]
     public double XSensitivity { get; set; } = 0.1d;
 
     [Property("Y Sensitivity"),
@@ -119,21 +119,13 @@ public sealed class DragScrollBinding : IStateBinding, IDisposable
              "The amount of decceleration applied to the scroll velocity when the user releases the binding.")]
     public double Deceleration { get; set; } = 0.1d;
 
-    [BooleanProperty("Scroll when dragging", ""),
-     DefaultPropertyValue(true),
-     ToolTip("Drag Scroll Binding:\n\n" +
-             "This setting only takes effect when a pen is used.\n" +
-             "Only scroll when the applied pressure is greater than the user defined threshold.\n" +
-             "When enabled, this effectively prevents scrolling when hovering over the tablet.")]
-    public bool ScrollOnDrag { get; set; } = true;
-
-    [SliderProperty("Pressure Threshold", 0f, 100f, 1f),
+    [SliderProperty("Drag Scrolling Pressure Threshold", 0f, 100f, 1f),
      DefaultPropertyValue(1f),
      Unit("%"),
      ToolTip("Drag Scroll Binding:\n\n" +
-             "Only scroll when the pressure is greater than the user defined threshold.\n" +
-             "Only takes effect when a pen is used & Require Pressure is enabled.")]
-    public float PressureThreshold { get; set; }
+             "The amount of pressure required for to start scrolling.\n" +
+             "A pressure threshold under 1% implies you will be scroll while hovering.")]
+    public float DragScrollingPressureThreshold { get; set; }
 
     #region Obsolete Properties
 
@@ -147,8 +139,8 @@ public sealed class DragScrollBinding : IStateBinding, IDisposable
     [Obsolete("TipActivationThreshold has been renamed to PressureThreshold")]
     public float TipActivationThreshold
     {
-        get => PressureThreshold;
-        set => PressureThreshold = value;
+        get => DragScrollingPressureThreshold;
+        set => DragScrollingPressureThreshold = value;
     }
 
     [Obsolete("StaticPositionWhileScrolling has been renamed to FrozenCursor")]
@@ -251,7 +243,7 @@ public sealed class DragScrollBinding : IStateBinding, IDisposable
     {
         switch (report)
         {
-            case ITabletReport tabletReport when !ScrollOnDrag || ((float)tabletReport.Pressure / (float)_PenMaxPressure * 100f) > PressureThreshold:
+            case ITabletReport tabletReport when !(DragScrollingPressureThreshold > 0) || ((float)tabletReport.Pressure / (float)_PenMaxPressure * 100f) > DragScrollingPressureThreshold:
                 Scroll(tabletReport);
                 break;
             case IMouseReport mouseReport:
@@ -288,8 +280,10 @@ public sealed class DragScrollBinding : IStateBinding, IDisposable
 
         //Log.Debug("Drag Scroll Binding", $"Velocity: X = {_currentVelocity[0]}, Y = {_currentVelocity[1]}");
 
-        Wheel.ScrollHorizontally((int)_currentVelocity[0]);
-        Wheel.ScrollVertically((int)_currentVelocity[1]);
+        if (_currentVelocity[0] < -1 || _currentVelocity[0] > 1)
+            Wheel.ScrollHorizontally((int)_currentVelocity[0]);
+        if (_currentVelocity[1] < -1 || _currentVelocity[1] > 1)
+            Wheel.ScrollVertically((int)_currentVelocity[1]);
 
         Wheel.Flush();
     }
@@ -307,7 +301,8 @@ public sealed class DragScrollBinding : IStateBinding, IDisposable
         else if (oldVelocity[0] < -1 && _currentVelocity[0] > 1)
             _currentVelocity[0] = 0;
 
-        Wheel.ScrollHorizontally((int)_currentVelocity[0]);
+        if (_currentVelocity[0] != 0)
+            Wheel.ScrollHorizontally((int)_currentVelocity[0]);
     }
 
     private void DecelerateY()
@@ -323,7 +318,8 @@ public sealed class DragScrollBinding : IStateBinding, IDisposable
         else if (oldVelocity[1] < -1 && _currentVelocity[1] > 1)
             _currentVelocity[1] = 0;
 
-        Wheel.ScrollVertically((int)_currentVelocity[1]);
+        if (_currentVelocity[1] != 0)
+            Wheel.ScrollVertically((int)_currentVelocity[1]);
     }
 
     #endregion
