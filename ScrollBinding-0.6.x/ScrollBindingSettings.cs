@@ -1,11 +1,10 @@
-using System;
-using System.Collections.Generic;
 using OpenTabletDriver.Plugin;
 using OpenTabletDriver.Plugin.Attributes;
 using OpenTabletDriver.Plugin.Tablet;
 
 namespace ScrollBinding;
 
+[PluginIgnore]
 [PluginName("Legacy Scroll Bindings Settings")]
 public class ScrollBindingSettings : ITool
 {

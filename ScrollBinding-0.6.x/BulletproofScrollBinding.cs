@@ -3,7 +3,7 @@ using ScrollBinding.Logging;
 
 namespace ScrollBinding;
 
-[PluginName("Scroll Bindings")]
+[PluginName("Scroll Bindings (Obselete)")]
 public class NewBulletproofScrollBinding : BulletproofScrollBinding
 {
     public NewBulletproofScrollBinding() : base(new BulletproofLogger()) {}
@@ -51,6 +51,19 @@ public class NewBulletproofScrollBinding : BulletproofScrollBinding
     {
         get => _scrollAmount;
         set => _scrollAmount = Math.Clamp(value, 0, 2400);
+    }
+
+    [BooleanProperty("Sync Cursor On Press", ""), 
+     DefaultPropertyValue(false),
+     ToolTip("Scroll Binding:\n\n" +
+             "Artist Mode &amp; Windows Ink Mode uses a different cursor.\n" +
+             "This may result in the binding scrolling in the completely wrong place.\n" +
+             "Note: Only some Linux Destop Environments will require this.\n\n" +
+             "Default: Disabled")]
+    public bool SyncCursorOnPress
+    {
+        get => _syncCursorOnPress;
+        set => _syncCursorOnPress = value;
     }
 
     public static new IEnumerable<string> ValidOptions => BulletproofScrollBinding.ValidOptions;
