@@ -12,7 +12,7 @@ using ITimer = OpenTabletDriver.Plugin.Timers.ITimer;
 
 namespace ScrollBinding;
 
-[PluginName("Pen Scroll")]
+[PluginName("Drag Scroll")]
 public sealed class DragScrollBinding : IStateBinding, IDisposable
 {
     #region Fields
