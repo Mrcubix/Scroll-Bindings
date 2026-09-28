@@ -36,6 +36,7 @@ public sealed class DragScrollBinding : IStateBinding, IDisposable
     private Vector2? _lastPosition;
     
     private uint _PenMaxPressure= 1024;
+    private bool _scrollOnDrag = false;
     private double _deltaTime; // in milliseconds
     private bool _pressing;
     
@@ -189,6 +190,8 @@ public sealed class DragScrollBinding : IStateBinding, IDisposable
                                               LogLevel.Error, false, true);
         else
             _fullyinitialized = true;
+
+        _scrollOnDrag = DragScrollingPressureThreshold > 0;
     }
 
     #endregion
@@ -223,14 +226,8 @@ public sealed class DragScrollBinding : IStateBinding, IDisposable
         {
             HandleReport(positionReport);
 
-            if (FrozenCursor)
-            {
-                // Store the first position so we can freeze the cursor
-                // The copy expires on Release
-                _initiatingPosition ??= new Vector2(positionReport.Position.X, positionReport.Position.Y);
-
-                positionReport.Position = (Vector2)_initiatingPosition;
-            }
+            if (FrozenCursor && _initiatingPosition is { } nonNullPosition)
+                positionReport.Position = nonNullPosition;
 
             // Cancel pressure during scroll so users don't click while scrolling
             if (CancelPressure)
@@ -243,7 +240,7 @@ public sealed class DragScrollBinding : IStateBinding, IDisposable
     {
         switch (report)
         {
-            case ITabletReport tabletReport when !(DragScrollingPressureThreshold > 0) || ((float)tabletReport.Pressure / (float)_PenMaxPressure * 100f) > DragScrollingPressureThreshold:
+            case ITabletReport tabletReport when !_scrollOnDrag || ((float)tabletReport.Pressure / (float)_PenMaxPressure * 100f) > DragScrollingPressureThreshold:
                 Scroll(tabletReport);
                 break;
             case IMouseReport mouseReport:
@@ -261,11 +258,14 @@ public sealed class DragScrollBinding : IStateBinding, IDisposable
     // This method is run every time a tablet report is received
     private void Scroll(IAbsolutePositionReport positionReport)
     {
-        if (!_pressing || _deltaTime == 0) return;
+        if (_deltaTime == 0) return;
 
-        _lastPosition ??= positionReport.Position;
+        // Store the first position so we can freeze the cursor
+        // The copy expires on Release
+        _initiatingPosition ??= new Vector2(positionReport.Position.X, positionReport.Position.Y);
+        _lastPosition ??= new Vector2(positionReport.Position.X, positionReport.Position.Y);
 
-        // skip if this is the initiating position
+        // skip if the position hasn't changed
         if (_lastPosition == positionReport.Position)
             return;
 
