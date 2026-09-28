@@ -24,8 +24,9 @@ public sealed class JoystickScrollBinding : IStateBinding, IDisposable
     private const double INTERVAL_MILLISECONDS = 1;
     private const double INTERVAL_SECONDS = INTERVAL_MILLISECONDS / 1000;
 
-    private const double INTERNAL_COEFFICIENT = 0.1;
-
+    private const double BASE_SPEED = 12d;
+    private const double INTERNAL_COEFFICIENT = 0.01;
+    
     private readonly IMouseWheel Wheel = ScrollBindingBase.CurrentPlatformWheel;
 
     #endregion
@@ -93,11 +94,11 @@ public sealed class JoystickScrollBinding : IStateBinding, IDisposable
     public double YSensitivity { get; set; } = 1d;
 
     [Property("Deadzone"),
-     DefaultPropertyValue(15d),
+     DefaultPropertyValue(30d),
      ToolTip("Joystick Scroll Binding:\n\n" +
              "Scrolling will not happen while the joystick is within the deadzone.\n" +
              "Unit is in tablet units, this is not pourcentage-based.")]
-    public double Deadzone { get; set; } = 15d;
+    public double Deadzone { get; set; } = 30d;
 
     [BooleanProperty("Invert Scroll", ""),
      DefaultPropertyValue(false),
@@ -250,8 +251,7 @@ public sealed class JoystickScrollBinding : IStateBinding, IDisposable
 
     #region Scrolling
 
-    // This method is run every time a tablet report is received
-    private void Scroll(IAbsolutePositionReport positionReport)
+    public void Scroll(IAbsolutePositionReport positionReport)
     {
         if (_deltaTime == 0) return;
 
@@ -263,20 +263,32 @@ public sealed class JoystickScrollBinding : IStateBinding, IDisposable
         if (_initiatingPosition == positionReport.Position)
             return;
 
+        // Shamelessly inspired from Mozilla Firefox's repo
+        var XSpeed = Math.Max(1, BASE_SPEED * 100f / (XSensitivity * 100f));
+        var YSpeed = Math.Max(1, BASE_SPEED * 100f / (YSensitivity * 100f));
+
         var delta = positionReport.Position - _initiatingPosition;
         var direction = InvertScroll ? -1 : 1;
 
-        _currentVelocity[0] = (((delta?.X ?? 0) * XSensitivity) / _deltaTime) * direction * INTERNAL_COEFFICIENT;
-        _currentVelocity[1] = (((delta?.Y ?? 0) * YSensitivity) / _deltaTime) * -direction * INTERNAL_COEFFICIENT;
+        var minDeltaTime = Math.Min(100f, _deltaTime) / 20;
+
+        _currentVelocity[0] = (delta?.X ?? 0 / XSpeed) / minDeltaTime * direction * INTERNAL_COEFFICIENT;
+        _currentVelocity[1] = (delta?.Y ?? 0 / YSpeed) / minDeltaTime * -direction * INTERNAL_COEFFICIENT;
 
         _deltaTime = 0;
 
-        //Log.Debug("Drag Scroll Binding", $"Velocity: X = {_currentVelocity[0]}, Y = {_currentVelocity[1]}");
+        //Log.Debug("Joystick Scroll Binding", $"Velocity: X = {_currentVelocity[0]}, Y = {_currentVelocity[1]}");
 
-        if (_currentVelocity[0] < -Deadzone || _currentVelocity[0] > Deadzone)
-            Wheel.ScrollHorizontally((int)_currentVelocity[0]);
-        if (_currentVelocity[1] < -Deadzone || _currentVelocity[1] > Deadzone)
-            Wheel.ScrollVertically((int)_currentVelocity[1]);
+        // Windows is annoying, as it will only scroll in whichever direction has the hiest scroll amount.
+        if (_currentVelocity[0] < -Deadzone)
+            Wheel.ScrollHorizontally((int)(_currentVelocity[0] + Deadzone));
+        else if (_currentVelocity[0] > Deadzone)
+            Wheel.ScrollHorizontally((int)(_currentVelocity[0] - Deadzone));
+
+        if (_currentVelocity[1] < -Deadzone)
+            Wheel.ScrollVertically((int)(_currentVelocity[1] + Deadzone));
+        else if (_currentVelocity[1] > Deadzone)
+            Wheel.ScrollVertically((int)(_currentVelocity[1] - Deadzone));
 
         Wheel.Flush();
     }
