@@ -81,11 +81,11 @@ public sealed class JoystickScrollBinding : IStateBinding, IDisposable
     }
 
     [Property("X Sensitivity"),
-     DefaultPropertyValue(0.5d),
+     DefaultPropertyValue(0.3d),
      ToolTip("Joystick Scroll Binding:\n\n" +
              "The horizontal sensitivity of the drag scroll binding. Higher values will result in faster scrolling." +
              "Horizontal scrolling cannot be properly supported on Windows due to SendInput limitations.")]
-    public double XSensitivity { get; set; } = 0.1d;
+    public double XSensitivity { get; set; } = 0.3d;
 
     [Property("Y Sensitivity"),
      DefaultPropertyValue(1d),
@@ -259,27 +259,27 @@ public sealed class JoystickScrollBinding : IStateBinding, IDisposable
         // The copy expires on Release
         _initiatingPosition ??= new Vector2(positionReport.Position.X, positionReport.Position.Y);
 
-        // skip if the position hasn't changed
+        // Skip if the position hasn't changed
         if (_initiatingPosition == positionReport.Position)
             return;
 
         // Shamelessly inspired from Mozilla Firefox's repo
-        var XSpeed = Math.Max(1, BASE_SPEED * 100f / (XSensitivity * 100f));
-        var YSpeed = Math.Max(1, BASE_SPEED * 100f / (YSensitivity * 100f));
+        var XSpeed = Math.Max(1, BASE_SPEED * XSensitivity);
+        var YSpeed = Math.Max(1, BASE_SPEED * YSensitivity);
 
         var delta = positionReport.Position - _initiatingPosition;
         var direction = InvertScroll ? -1 : 1;
 
         var minDeltaTime = Math.Min(100f, _deltaTime) / 20;
 
-        _currentVelocity[0] = (delta?.X ?? 0 / XSpeed) / minDeltaTime * direction * INTERNAL_COEFFICIENT;
-        _currentVelocity[1] = (delta?.Y ?? 0 / YSpeed) / minDeltaTime * -direction * INTERNAL_COEFFICIENT;
+        _currentVelocity[0] = ((delta?.X ?? 0 / XSpeed) / minDeltaTime) * INTERNAL_COEFFICIENT * direction;
+        _currentVelocity[1] = ((delta?.Y ?? 0 / YSpeed) / minDeltaTime) * INTERNAL_COEFFICIENT * -direction;
 
         _deltaTime = 0;
 
         //Log.Debug("Joystick Scroll Binding", $"Velocity: X = {_currentVelocity[0]}, Y = {_currentVelocity[1]}");
 
-        // Windows is annoying, as it will only scroll in whichever direction has the hiest scroll amount.
+        // Windows is annoying, as it will only scroll in whichever direction has the highest scroll amount.
         if (_currentVelocity[0] < -Deadzone)
             Wheel.ScrollHorizontally((int)(_currentVelocity[0] + Deadzone));
         else if (_currentVelocity[0] > Deadzone)
