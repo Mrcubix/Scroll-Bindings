@@ -1,0 +1,15 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>ScrollBinding</RootNamespace>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../.modules/OpenTabletDriver-0.7.x/OpenTabletDriver/OpenTabletDriver.csproj" />
+    <ProjectReference Include="../ScrollBinding.Lib/ScrollBinding.Lib.csproj" />
+  </ItemGroup>
+
+</Project>
