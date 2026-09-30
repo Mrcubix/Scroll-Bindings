@@ -4,3 +4,7 @@
 [submodule "OpenTabletDriver-0.6.x"]
 	path = .modules/OpenTabletDriver-0.6.x
 	url = https://github.com/OpenTabletDriver/OpenTabletDriver.git
+[submodule ".modules/OpenTabletDriver-0.7.x"]
+	path = .modules/OpenTabletDriver-0.7.x
+	url = https://github.com/gonX/OpenTabletDriver.git
+	branch = di-rewrite
