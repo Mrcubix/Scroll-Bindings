@@ -19,7 +19,7 @@ public sealed class JoystickScrollBinding : IStateBinding, IDisposable
 
     #region Constants
 
-    private const string PLUGIN_NAME = "Joystick Scroll";
+    private const string PLUGIN_NAME = "Autoscroll";
 
     private const double INTERVAL_MILLISECONDS = 1;
     private const double INTERVAL_SECONDS = INTERVAL_MILLISECONDS / 1000;
@@ -82,61 +82,61 @@ public sealed class JoystickScrollBinding : IStateBinding, IDisposable
 
     [Property("X Sensitivity"),
      DefaultPropertyValue(0.3d),
-     ToolTip("Joystick Scroll Binding:\n\n" +
+     ToolTip("Autoscroll Binding:\n\n" +
              "The horizontal sensitivity of the drag scroll binding. Higher values will result in faster scrolling." +
              "Horizontal scrolling cannot be properly supported on Windows due to SendInput limitations.")]
     public double XSensitivity { get; set; } = 0.3d;
 
     [Property("Y Sensitivity"),
      DefaultPropertyValue(1d),
-     ToolTip("Joystick Scroll Binding:\n\n" +
+     ToolTip("Autoscroll Binding:\n\n" +
              "The vertical sensitivity of the drag scroll binding. Higher values will result in faster scrolling.")]
     public double YSensitivity { get; set; } = 1d;
 
     [Property("Deadzone"),
      DefaultPropertyValue(30d),
-     ToolTip("Joystick Scroll Binding:\n\n" +
+     ToolTip("Autoscroll Binding:\n\n" +
              "Scrolling will not happen while the joystick is within the deadzone.\n" +
              "Unit is in tablet units, this is not pourcentage-based.")]
     public double Deadzone { get; set; } = 30d;
 
     [BooleanProperty("Invert Scroll", ""),
      DefaultPropertyValue(false),
-     ToolTip("Joystick Scroll Binding:\n\n" +
+     ToolTip("Autoscroll Binding:\n\n" +
              "Inverts the scroll direction of the drag scroll binding.\n")]
     public bool InvertScroll { get; set; }
 
     [BooleanProperty("Freeze Cursor", ""),
      DefaultPropertyValue(true),
-     ToolTip("Joystick Scroll Binding:\n\n" +
+     ToolTip("Autoscroll Binding:\n\n" +
              "The cursor will remain at the same position while scrolling.")]
     public bool FrozenCursor { get; set; } = true;
 
     /*[BooleanProperty("Cancel Pressure", ""),
      DefaultPropertyValue(true),
-     ToolTip("Drag Scroll Binding:\n\n" +
+     ToolTip("Autoscroll Binding:\n\n" +
              "The pressure will be canceled while scrolling.")]*/
     public bool CancelPressure { get; set; } = true;
 
     /*[BooleanProperty("Scroll when dragging", ""),
      DefaultPropertyValue(true),
-     ToolTip("Joystick Scroll Binding:\n\n" +
+     ToolTip("Autoscroll Binding:\n\n" +
              "This setting only takes effect when a pen is used.\n" +
              "Only scroll when the applied pressure is greater than the user defined threshold.\n" +
              "When enabled, this effectively prevents scrolling when hovering over the tablet.")]*/
     public bool ScrollOnDrag { get; set; } = true;
 
-    [SliderProperty("Drag Scrolling Pressure Threshold", 0f, 100f, 1f),
+    [SliderProperty("Autoscroll Pressure Threshold", 0f, 100f, 1f),
      DefaultPropertyValue(1f),
      Unit("%"),
-     ToolTip("Joystick Scroll Binding:\n\n" +
+     ToolTip("Autoscroll Binding:\n\n" +
              "The amount of pressure required for to start scrolling.\n" +
              "A pressure threshold under 1% implies you will be scroll while hovering.")]
-    public float DragScrollingPressureThreshold { get; set; }
+    public float AutoscrollPressureThreshold { get; set; }
 
     /*[BooleanProperty("Reset origin when hovering", ""),
      DefaultPropertyValue(true),
-     ToolTip("Joystick Scroll Binding:\n\n" +
+     ToolTip("Autoscroll Binding:\n\n" +
              "When enabled, the origin will be reset when hovering on the tablet.\n" +
              "This allows resetting the origin without releasing the Binding.\n" +
              "Only takes effect when Threshold is above 0%.")]*/
@@ -180,7 +180,7 @@ public sealed class JoystickScrollBinding : IStateBinding, IDisposable
         else
             _fullyinitialized = true;
 
-        ScrollOnDrag = DragScrollingPressureThreshold > 0;
+        ScrollOnDrag = AutoscrollPressureThreshold > 0;
     }
 
     #endregion
@@ -229,7 +229,7 @@ public sealed class JoystickScrollBinding : IStateBinding, IDisposable
         switch (report)
         {
             case ITabletReport tabletReport:
-                var aboveThreshold = ((float)tabletReport.Pressure / (float)_PenMaxPressure * 100f) > DragScrollingPressureThreshold;
+                var aboveThreshold = ((float)tabletReport.Pressure / (float)_PenMaxPressure * 100f) > AutoscrollPressureThreshold;
 
                 if (!ScrollOnDrag || aboveThreshold)
                     Scroll(tabletReport);
