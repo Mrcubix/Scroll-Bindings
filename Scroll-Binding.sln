@@ -3,9 +3,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ScrollBinding-0.5.x", "ScrollBinding-0.5.x\ScrollBinding.csproj", "{ABADE3F0-F041-400C-9482-3550F370A859}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ScrollBinding-0.5.x", "ScrollBinding-0.5.x\ScrollBinding-0.5.x.csproj", "{ABADE3F0-F041-400C-9482-3550F370A859}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ScrollBinding-0.6.x", "ScrollBinding-0.6.x\ScrollBinding.csproj", "{82C560FD-25E4-4C01-8B41-3E910B3CB18C}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ScrollBinding-0.6.x", "ScrollBinding-0.6.x\ScrollBinding-0.6.x.csproj", "{82C560FD-25E4-4C01-8B41-3E910B3CB18C}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ScrollBinding-0.7.x", "ScrollBinding-0.7.x\ScrollBinding-0.7.x.csproj", "{FAEBC341-90D6-4752-9863-42599C1E3C0D}"
 EndProject
