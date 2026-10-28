@@ -36,7 +36,10 @@ public sealed class JoystickScrollBinding : IStateBinding, IDisposable
     private TabletReference? _tablet;
     private ITimer? _timer;
 
+    private Matrix3x2 _rotationMatrix;
+
     private double[] _currentVelocity = [0, 0];
+    private Vector2? _anchorPosition;
     private Vector2? _initiatingPosition;
     
     private uint _PenMaxPressure= 1024;
@@ -170,6 +173,16 @@ public sealed class JoystickScrollBinding : IStateBinding, IDisposable
     {
         if (_outputMode == null) return;
 
+        if (_outputMode is AbsoluteOutputMode absoluteOutputMode)
+            _rotationMatrix = CreateTransformationMatrix(absoluteOutputMode.Input?.Rotation ?? 0f);
+        else if (_outputMode is RelativeOutputMode relativeOutputMode)
+            _rotationMatrix = CreateTransformationMatrix(relativeOutputMode.Rotation);
+        else
+        {
+            Log.Write(PLUGIN_NAME, $"Unsupported Output Mode: {_outputMode.GetType().Name}", LogLevel.Error);
+            return;
+        }
+
         _filter = _outputMode.Elements.OfType<ScrollBindingFilter>().FirstOrDefault();
         _filter?.PositionChanged += Consume;
 
@@ -182,6 +195,9 @@ public sealed class JoystickScrollBinding : IStateBinding, IDisposable
 
         ScrollOnDrag = AutoscrollPressureThreshold > 0;
     }
+
+    private static Matrix3x2 CreateTransformationMatrix(float rotation)
+        => Matrix3x2.CreateRotation((float)(-rotation * Math.PI / 180));
 
     #endregion
 
@@ -201,6 +217,7 @@ public sealed class JoystickScrollBinding : IStateBinding, IDisposable
     public void Release(TabletReference tablet, IDeviceReport report)
     {
         _pressing = false;
+        _anchorPosition = null;
         _initiatingPosition = null;
     }
 
@@ -214,8 +231,8 @@ public sealed class JoystickScrollBinding : IStateBinding, IDisposable
         {
             HandleReport(positionReport);
 
-            if (FrozenCursor & _initiatingPosition != null)
-                positionReport.Position = _initiatingPosition!.Value;
+            if (FrozenCursor & _anchorPosition.HasValue)
+                positionReport.Position = _anchorPosition.GetValueOrDefault();
 
             // Cancel pressure during scroll so users don't click while scrolling
             if (CancelPressure)
@@ -255,19 +272,23 @@ public sealed class JoystickScrollBinding : IStateBinding, IDisposable
     {
         if (_deltaTime == 0) return;
 
+        _anchorPosition ??= new Vector2(positionReport.Position.X, positionReport.Position.Y);
+
+        var pos = Vector2.Transform(positionReport.Position, _rotationMatrix);
+
         // Store the first position so we can freeze the cursor
         // The copy expires on Release
-        _initiatingPosition ??= new Vector2(positionReport.Position.X, positionReport.Position.Y);
+        _initiatingPosition ??= pos;
 
         // Skip if the position hasn't changed
-        if (_initiatingPosition == positionReport.Position)
+        if (_initiatingPosition == pos)
             return;
 
         // Shamelessly inspired from Mozilla Firefox's repo
         var XSpeed = Math.Max(1, BASE_SPEED * XSensitivity);
         var YSpeed = Math.Max(1, BASE_SPEED * YSensitivity);
 
-        var delta = positionReport.Position - _initiatingPosition;
+        var delta = pos - _initiatingPosition;
         var direction = InvertScroll ? -1 : 1;
 
         var minDeltaTime = Math.Min(100f, _deltaTime) / 20;
