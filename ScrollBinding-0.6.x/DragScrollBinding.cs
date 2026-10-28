@@ -12,7 +12,7 @@ using ITimer = OpenTabletDriver.Plugin.Timers.ITimer;
 
 namespace ScrollBinding;
 
-[PluginName("Pen Scroll")]
+[PluginName("Drag Scroll")]
 public sealed class DragScrollBinding : IStateBinding, IDisposable
 {
     #region Fields
@@ -31,11 +31,15 @@ public sealed class DragScrollBinding : IStateBinding, IDisposable
     private TabletReference? _tablet;
     private ITimer? _timer;
 
+    private Matrix3x2 _rotationMatrix;
+
     private double[] _currentVelocity = [0, 0];
+    private Vector2? _anchorPosition;
     private Vector2? _initiatingPosition;
     private Vector2? _lastPosition;
     
     private uint _PenMaxPressure= 1024;
+    private bool _scrollOnDrag = false;
     private double _deltaTime; // in milliseconds
     private bool _pressing;
     
@@ -180,6 +184,16 @@ public sealed class DragScrollBinding : IStateBinding, IDisposable
     {
         if (_outputMode == null) return;
 
+        if (_outputMode is AbsoluteOutputMode absoluteOutputMode)
+            _rotationMatrix = CreateTransformationMatrix(absoluteOutputMode.Input?.Rotation ?? 0f);
+        else if (_outputMode is RelativeOutputMode relativeOutputMode)
+            _rotationMatrix = CreateTransformationMatrix(relativeOutputMode.Rotation);
+        else
+        {
+            Log.Write("Drag Scroll Binding", $"Unsupported Output Mode: {_outputMode.GetType().Name}", LogLevel.Error);
+            return;
+        }
+
         _filter = _outputMode.Elements.OfType<ScrollBindingFilter>().FirstOrDefault();
         _filter?.PositionChanged += Consume;
 
@@ -189,7 +203,12 @@ public sealed class DragScrollBinding : IStateBinding, IDisposable
                                               LogLevel.Error, false, true);
         else
             _fullyinitialized = true;
+
+        _scrollOnDrag = DragScrollingPressureThreshold > 0;
     }
+
+    private static Matrix3x2 CreateTransformationMatrix(float rotation)
+        => Matrix3x2.CreateRotation((float)(-rotation * Math.PI / 180));
 
     #endregion
 
@@ -210,6 +229,7 @@ public sealed class DragScrollBinding : IStateBinding, IDisposable
     public void Release(TabletReference tablet, IDeviceReport report)
     {
         _pressing = false;
+        _anchorPosition = null;
         _initiatingPosition = null;
     }
 
@@ -223,14 +243,8 @@ public sealed class DragScrollBinding : IStateBinding, IDisposable
         {
             HandleReport(positionReport);
 
-            if (FrozenCursor)
-            {
-                // Store the first position so we can freeze the cursor
-                // The copy expires on Release
-                _initiatingPosition ??= new Vector2(positionReport.Position.X, positionReport.Position.Y);
-
-                positionReport.Position = (Vector2)_initiatingPosition;
-            }
+            if (FrozenCursor && _anchorPosition.HasValue)
+                positionReport.Position = _anchorPosition.GetValueOrDefault();
 
             // Cancel pressure during scroll so users don't click while scrolling
             if (CancelPressure)
@@ -243,7 +257,7 @@ public sealed class DragScrollBinding : IStateBinding, IDisposable
     {
         switch (report)
         {
-            case ITabletReport tabletReport when !(DragScrollingPressureThreshold > 0) || ((float)tabletReport.Pressure / (float)_PenMaxPressure * 100f) > DragScrollingPressureThreshold:
+            case ITabletReport tabletReport when !_scrollOnDrag || ((float)tabletReport.Pressure / (float)_PenMaxPressure * 100f) > DragScrollingPressureThreshold:
                 Scroll(tabletReport);
                 break;
             case IMouseReport mouseReport:
@@ -261,11 +275,18 @@ public sealed class DragScrollBinding : IStateBinding, IDisposable
     // This method is run every time a tablet report is received
     private void Scroll(IAbsolutePositionReport positionReport)
     {
-        if (!_pressing || _deltaTime == 0) return;
+        if (_deltaTime == 0) return;
 
-        _lastPosition ??= positionReport.Position;
+        _anchorPosition ??= new Vector2(positionReport.Position.X, positionReport.Position.Y);
 
-        // skip if this is the initiating position
+        var pos = Vector2.Transform(positionReport.Position, _rotationMatrix);
+
+        // Store the first position so we can freeze the cursor
+        // The copy expires on Release
+        _initiatingPosition ??= pos;
+        _lastPosition ??= pos;
+
+        // skip if the position hasn't changed
         if (_lastPosition == positionReport.Position)
             return;
 
