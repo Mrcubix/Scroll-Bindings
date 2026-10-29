@@ -287,7 +287,7 @@ public sealed class DragScrollBinding : IStateBinding, IDisposable
         _lastPosition ??= pos;
 
         // skip if the position hasn't changed
-        if (_lastPosition == positionReport.Position)
+        if (_lastPosition == pos)
             return;
 
         var delta = positionReport.Position - _lastPosition;
