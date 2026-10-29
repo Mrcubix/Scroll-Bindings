@@ -290,13 +290,13 @@ public sealed class DragScrollBinding : IStateBinding, IDisposable
         if (_lastPosition == pos)
             return;
 
-        var delta = positionReport.Position - _lastPosition;
+        var delta = pos - _lastPosition;
         var direction = InvertScroll ? -1 : 1;
 
         _currentVelocity[0] = (((delta?.X ?? 0) * XSensitivity) / _deltaTime) * direction;
         _currentVelocity[1] = (((delta?.Y ?? 0) * YSensitivity) / _deltaTime) * direction;
 
-        _lastPosition = positionReport.Position;
+        _lastPosition = pos;
         _deltaTime = 0;
 
         //Log.Debug("Drag Scroll Binding", $"Velocity: X = {_currentVelocity[0]}, Y = {_currentVelocity[1]}");
