@@ -86,7 +86,7 @@ public sealed class JoystickScrollBinding : IStateBinding, IDisposable
     [Property("X Sensitivity"),
      DefaultPropertyValue(0.3d),
      ToolTip("Autoscroll Binding:\n\n" +
-             "The horizontal sensitivity of the drag scroll binding. Higher values will result in faster scrolling." +
+             "The horizontal sensitivity of the drag scroll binding. Higher values will result in faster scrolling.\n" +
              "Horizontal scrolling cannot be properly supported on Windows due to SendInput limitations.")]
     public double XSensitivity { get; set; } = 0.3d;
 
