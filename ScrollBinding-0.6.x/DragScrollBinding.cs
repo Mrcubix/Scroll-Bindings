@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Numerics;
 using OpenTabletDriver;
 using OpenTabletDriver.Plugin;
@@ -6,7 +7,6 @@ using OpenTabletDriver.Plugin.DependencyInjection;
 using OpenTabletDriver.Plugin.Output;
 using OpenTabletDriver.Plugin.Tablet;
 using ScrollBinding.Lib.Interfaces;
-using ITimer = OpenTabletDriver.Plugin.Timers.ITimer;
 
 #nullable enable
 
@@ -19,8 +19,7 @@ public sealed class DragScrollBinding : IStateBinding, IDisposable
 
     #region Constants
 
-    private const double INTERVAL_MILLISECONDS = 1;
-    private const double INTERVAL_SECONDS = INTERVAL_MILLISECONDS / 1000;
+    private const int INTERVAL_MILLISECONDS = 1;
 
     private readonly IMouseWheel Wheel = ScrollBindingBase.CurrentPlatformWheel;
 
@@ -29,7 +28,10 @@ public sealed class DragScrollBinding : IStateBinding, IDisposable
     private ScrollBindingFilter? _filter;
     private IOutputMode? _outputMode;
     private TabletReference? _tablet;
-    private ITimer? _timer;
+    private readonly object _stateLock = new();
+    private System.Threading.Timer? _momentumTimer;
+    private bool _momentumRunning;
+    private bool _disposed;
 
     private Matrix3x2 _rotationMatrix;
 
@@ -40,7 +42,7 @@ public sealed class DragScrollBinding : IStateBinding, IDisposable
     
     private uint _PenMaxPressure= 1024;
     private bool _scrollOnDrag = false;
-    private double _deltaTime; // in milliseconds
+    private long _lastMovementTicks;
     private bool _pressing;
     
     private bool _fullyinitialized;
@@ -48,23 +50,6 @@ public sealed class DragScrollBinding : IStateBinding, IDisposable
     #endregion
 
     #region Properties
-
-    [Resolved]
-    public ITimer? Timer
-    {
-        get => _timer;
-        set
-        {
-            _timer = value;
-
-            if (_timer != null)
-            {
-                _timer.Interval = (float)INTERVAL_MILLISECONDS;
-                _timer.Elapsed += IntervalElapsed;
-                _timer.Start();
-            }
-        }
-    }
 
     [Resolved]
     public IDriver? Driver { get; set; }
@@ -216,21 +201,26 @@ public sealed class DragScrollBinding : IStateBinding, IDisposable
 
     public void Press(TabletReference tablet, IDeviceReport report)
     {
-        if (!_fullyinitialized)
-            PostElementInitialize();
-
-        // Cancel any existing velocity
-        _currentVelocity = [0d, 0d];
-
-        _pressing = true;
-        _lastPosition = null;
+        lock (_stateLock)
+        {
+            if (_disposed) return;
+            if (!_fullyinitialized)
+                PostElementInitialize();
+            StopMomentum();
+            _currentVelocity = [0d, 0d];
+            _pressing = true;
+            _lastPosition = null;
+        }
     }
 
     public void Release(TabletReference tablet, IDeviceReport report)
     {
-        _pressing = false;
-        _anchorPosition = null;
-        _initiatingPosition = null;
+        lock (_stateLock)
+        {
+            _pressing = false;
+            _anchorPosition = null;
+            _initiatingPosition = null;
+        }
     }
 
     #endregion
@@ -239,8 +229,10 @@ public sealed class DragScrollBinding : IStateBinding, IDisposable
 
     public void Consume(object? sender, IDeviceReport report)
     {
-        if (_pressing && report is IAbsolutePositionReport positionReport)
+        lock (_stateLock)
         {
+            if (_disposed || !_pressing || report is not IAbsolutePositionReport positionReport)
+                return;
             HandleReport(positionReport);
 
             if (FrozenCursor && _anchorPosition.HasValue)
@@ -275,7 +267,7 @@ public sealed class DragScrollBinding : IStateBinding, IDisposable
     // This method is run every time a tablet report is received
     private void Scroll(IAbsolutePositionReport positionReport)
     {
-        if (_deltaTime == 0) return;
+        var now = Stopwatch.GetTimestamp();
 
         _anchorPosition ??= new Vector2(positionReport.Position.X, positionReport.Position.Y);
 
@@ -284,20 +276,26 @@ public sealed class DragScrollBinding : IStateBinding, IDisposable
         // Store the first position so we can freeze the cursor
         // The copy expires on Release
         _initiatingPosition ??= pos;
-        _lastPosition ??= pos;
+        if (_lastPosition == null)
+        {
+            _lastPosition = pos;
+            _lastMovementTicks = now;
+            return;
+        }
 
         // skip if the position hasn't changed
         if (_lastPosition == pos)
             return;
 
+        var elapsedMs = Math.Max(1d, (now - _lastMovementTicks) * 1000d / Stopwatch.Frequency);
+        _lastMovementTicks = now;
         var delta = pos - _lastPosition;
         var direction = InvertScroll ? -1 : 1;
 
-        _currentVelocity[0] = (((delta?.X ?? 0) * XSensitivity) / _deltaTime) * direction;
-        _currentVelocity[1] = (((delta?.Y ?? 0) * YSensitivity) / _deltaTime) * direction;
+        _currentVelocity[0] = (((delta?.X ?? 0) * XSensitivity) / elapsedMs) * direction;
+        _currentVelocity[1] = (((delta?.Y ?? 0) * YSensitivity) / elapsedMs) * direction;
 
         _lastPosition = pos;
-        _deltaTime = 0;
 
         //Log.Debug("Drag Scroll Binding", $"Velocity: X = {_currentVelocity[0]}, Y = {_currentVelocity[1]}");
 
@@ -307,6 +305,13 @@ public sealed class DragScrollBinding : IStateBinding, IDisposable
             Wheel.ScrollVertically((int)_currentVelocity[1]);
 
         Wheel.Flush();
+        if (CanDecelerate && HasMomentum && !_momentumRunning)
+        {
+            _momentumTimer ??= new System.Threading.Timer(_ => IntervalElapsed(), null,
+                Timeout.Infinite, Timeout.Infinite);
+            _momentumRunning = true;
+            _momentumTimer.Change(INTERVAL_MILLISECONDS, INTERVAL_MILLISECONDS);
+        }
     }
 
     private void DecelerateX()
@@ -347,19 +352,33 @@ public sealed class DragScrollBinding : IStateBinding, IDisposable
 
     #region Event Handlers
 
+    private bool CanDecelerate => EnableKineticScrolling && Deceleration > 0 && double.IsFinite(Deceleration);
+    private bool HasMomentum => Math.Abs(_currentVelocity[0]) > 1 || Math.Abs(_currentVelocity[1]) > 1;
+
+    private void StopMomentum()
+    {
+        if (!_momentumRunning) return;
+        _momentumRunning = false;
+        _momentumTimer?.Change(Timeout.Infinite, Timeout.Infinite);
+    }
+
     public void IntervalElapsed()
     {
-        if (_timer == null) return;
+        lock (_stateLock)
+        {
+            if (!_momentumRunning || _disposed) return;
+            if (!CanDecelerate || !HasMomentum)
+            {
+                StopMomentum();
+                return;
+            }
 
-        _deltaTime += (ulong)_timer.Interval;
-
-        if (EnableKineticScrolling && (_currentVelocity[0] < -1 || _currentVelocity[0] > 1))
-            DecelerateX();
-
-        if (EnableKineticScrolling && (_currentVelocity[1] < -1 || _currentVelocity[1] > 1))
-            DecelerateY();
-
-        Wheel.Flush();
+            if (Math.Abs(_currentVelocity[0]) > 1) DecelerateX();
+            if (Math.Abs(_currentVelocity[1]) > 1) DecelerateY();
+            Wheel.Flush();
+            if (!HasMomentum)
+                StopMomentum();
+        }
     }
 
     #endregion
@@ -368,12 +387,13 @@ public sealed class DragScrollBinding : IStateBinding, IDisposable
 
     public void Dispose()
     {
-        if (_timer != null)
+        lock (_stateLock)
         {
-            _timer.Elapsed -= IntervalElapsed;
-            _timer.Stop();
-            _timer.Dispose();
-            _timer = null;
+            if (_disposed) return;
+            _disposed = true;
+            StopMomentum();
+            _momentumTimer?.Dispose();
+            if (_filter != null) _filter.PositionChanged -= Consume;
         }
     }
 
