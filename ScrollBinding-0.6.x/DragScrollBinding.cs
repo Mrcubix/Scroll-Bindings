@@ -34,15 +34,19 @@ public sealed class DragScrollBinding : IStateBinding, IDisposable
     private Matrix3x2 _rotationMatrix;
 
     private double[] _currentVelocity = [0, 0];
+    private bool _hasVelocityX;
+    private bool _hasVelocityY;
+
     private Vector2? _anchorPosition;
     private Vector2? _initiatingPosition;
     private Vector2? _lastPosition;
-    
-    private uint _PenMaxPressure= 1024;
+
+    private uint _PenMaxPressure = 1024;
     private bool _scrollOnDrag = false;
+    private Vector2 _direction = Vector2.One;
     private double _deltaTime; // in milliseconds
     private bool _pressing;
-    
+
     private bool _fullyinitialized;
 
     #endregion
@@ -61,7 +65,6 @@ public sealed class DragScrollBinding : IStateBinding, IDisposable
             {
                 _timer.Interval = (float)INTERVAL_MILLISECONDS;
                 _timer.Elapsed += IntervalElapsed;
-                _timer.Start();
             }
         }
     }
@@ -80,24 +83,34 @@ public sealed class DragScrollBinding : IStateBinding, IDisposable
         }
     }
 
+    #region Parameters
+
     [Property("X Sensitivity"),
      DefaultPropertyValue(0.5d),
      ToolTip("Drag Scroll Binding:\n\n" +
-             "The horizontal sensitivity of the drag scroll binding. Higher values will result in faster scrolling." +
+             "The horizontal sensitivity of the drag scroll binding. Higher values will result in faster scrolling.\n" +
+             "A negative value will result in inverted scrolling.\n" +
              "Horizontal scrolling cannot be properly supported on Windows due to SendInput limitations.")]
     public double XSensitivity { get; set; } = 0.1d;
 
     [Property("Y Sensitivity"),
      DefaultPropertyValue(1d),
      ToolTip("Drag Scroll Binding:\n\n" +
-             "The vertical sensitivity of the drag scroll binding. Higher values will result in faster scrolling.")]
+             "The vertical sensitivity of the drag scroll binding. Higher values will result in faster scrolling.\n" +
+             "A negative value will result in inverted scrolling.")]
     public double YSensitivity { get; set; } = 1d;
 
-    [BooleanProperty("Invert Scroll", ""),
+    [BooleanProperty("Invert X Scroll", ""),
      DefaultPropertyValue(false),
      ToolTip("Drag Scroll Binding:\n\n" +
-             "Inverts the scroll direction of the drag scroll binding.")]
-    public bool InvertScroll { get; set; }
+             "Inverts the horizontal scroll direction of the drag scroll binding.")]
+    public bool InvertScrollX { get; set; }
+
+    [BooleanProperty("Invert Y Scroll", ""),
+     DefaultPropertyValue(false),
+     ToolTip("Drag Scroll Binding:\n\n" +
+             "Inverts the vertical scroll direction of the drag scroll binding.")]
+    public bool InvertScrollY { get; set; }
 
     [BooleanProperty("Freeze Cursor", ""),
      DefaultPropertyValue(true),
@@ -105,10 +118,10 @@ public sealed class DragScrollBinding : IStateBinding, IDisposable
              "The cursor will remain at the same position while scrolling.")]
     public bool FrozenCursor { get; set; } = true;
 
-    /*[BooleanProperty("Cancel Pressure", ""),
+    [BooleanProperty("Cancel Pressure", ""),
      DefaultPropertyValue(true),
      ToolTip("Drag Scroll Binding:\n\n" +
-             "The pressure will be canceled while scrolling.")]*/
+             "The pressure will be canceled while scrolling.")]
     public bool CancelPressure { get; set; } = true;
 
     [BooleanProperty("Enable Kinetic Scrolling", ""),
@@ -128,8 +141,10 @@ public sealed class DragScrollBinding : IStateBinding, IDisposable
      Unit("%"),
      ToolTip("Drag Scroll Binding:\n\n" +
              "The amount of pressure required for to start scrolling.\n" +
-             "A pressure threshold under 1% implies you will be scroll while hovering.")]
+             "A pressure threshold under 1% implies scrolling will be active even when hovering over the tablet.")]
     public float DragScrollingPressureThreshold { get; set; }
+
+    #endregion
 
     #region Obsolete Properties
 
@@ -199,12 +214,13 @@ public sealed class DragScrollBinding : IStateBinding, IDisposable
 
         if (_filter == null)
             Log.Write("Drag Scroll Binding", $"Failed to find Scroll Binding Filter in the pipeline for '{_tablet?.Properties.Name}'.\n" +
-                                              "Enabling 'Scroll Binding Filter' in the Filter tab is required for Drag Scrolling to work.", 
+                                              "Enabling 'Scroll Binding Filter' in the Filter tab is required for Drag Scrolling to work.",
                                               LogLevel.Error, false, true);
         else
             _fullyinitialized = true;
 
         _scrollOnDrag = DragScrollingPressureThreshold > 0;
+        _direction = new Vector2(InvertScrollX ? -1 : 1, InvertScrollY ? -1 : 1);
     }
 
     private static Matrix3x2 CreateTransformationMatrix(float rotation)
@@ -247,9 +263,8 @@ public sealed class DragScrollBinding : IStateBinding, IDisposable
                 positionReport.Position = _anchorPosition.GetValueOrDefault();
 
             // Cancel pressure during scroll so users don't click while scrolling
-            if (CancelPressure)
-                if (positionReport is ITabletReport tabletReport)
-                    tabletReport.Pressure = 0;
+            if (CancelPressure && positionReport is ITabletReport tabletReport)
+                tabletReport.Pressure = 0;
         }
     }
 
@@ -257,8 +272,17 @@ public sealed class DragScrollBinding : IStateBinding, IDisposable
     {
         switch (report)
         {
-            case ITabletReport tabletReport when !_scrollOnDrag || ((float)tabletReport.Pressure / (float)_PenMaxPressure * 100f) > DragScrollingPressureThreshold:
-                Scroll(tabletReport);
+            case ITabletReport tabletReport:
+                var aboveThreshold = ((float)tabletReport.Pressure / (float)_PenMaxPressure * 100f) > DragScrollingPressureThreshold;
+
+                if (!_scrollOnDrag || aboveThreshold)
+                    Scroll(tabletReport);
+
+                // The timer is only used for kinetic scrolling.
+                // There is of course no point in starting it, if there is no velocity.
+                // Finally, there is no point in starting it if the threshold isn't met (or one isn't needed)
+                if (EnableKineticScrolling && (_hasVelocityX || _hasVelocityY) && (!_scrollOnDrag || !aboveThreshold))
+                    _timer?.Start();
                 break;
             case IMouseReport mouseReport:
                 Scroll(mouseReport);
@@ -291,22 +315,22 @@ public sealed class DragScrollBinding : IStateBinding, IDisposable
             return;
 
         var delta = pos - _lastPosition;
-        var direction = InvertScroll ? -1 : 1;
 
-        _currentVelocity[0] = (((delta?.X ?? 0) * XSensitivity) / _deltaTime) * direction;
-        _currentVelocity[1] = (((delta?.Y ?? 0) * YSensitivity) / _deltaTime) * direction;
+        _currentVelocity[0] = (((delta?.X ?? 0) * XSensitivity) / _deltaTime) * _direction.X;
+        _currentVelocity[1] = (((delta?.Y ?? 0) * YSensitivity) / _deltaTime) * _direction.Y;
 
         _lastPosition = pos;
         _deltaTime = 0;
 
         //Log.Debug("Drag Scroll Binding", $"Velocity: X = {_currentVelocity[0]}, Y = {_currentVelocity[1]}");
-
-        if (_currentVelocity[0] < -1 || _currentVelocity[0] > 1)
+        
+        if (_hasVelocityX = HasVelocity(_currentVelocity[0], 1))
             Wheel.ScrollHorizontally((int)_currentVelocity[0]);
-        if (_currentVelocity[1] < -1 || _currentVelocity[1] > 1)
+        if (_hasVelocityY = HasVelocity(_currentVelocity[1], 1))
             Wheel.ScrollVertically((int)_currentVelocity[1]);
 
-        Wheel.Flush();
+        if (_hasVelocityX || _hasVelocityY)
+            Wheel.Flush();
     }
 
     private void DecelerateX()
@@ -353,14 +377,29 @@ public sealed class DragScrollBinding : IStateBinding, IDisposable
 
         _deltaTime += (ulong)_timer.Interval;
 
-        if (EnableKineticScrolling && (_currentVelocity[0] < -1 || _currentVelocity[0] > 1))
+        _hasVelocityX = HasVelocity(_currentVelocity[0], 1);
+        _hasVelocityY = HasVelocity(_currentVelocity[1], 1);
+
+        if (EnableKineticScrolling && _hasVelocityX)
             DecelerateX();
 
-        if (EnableKineticScrolling && (_currentVelocity[1] < -1 || _currentVelocity[1] > 1))
+        if (EnableKineticScrolling && _hasVelocityY)
             DecelerateY();
 
-        Wheel.Flush();
+        // In the situation where the velocity becomes 0,
+        // This will send one last event to the OS to cancel any scrolling.
+        if (_hasVelocityX || _hasVelocityY)
+            Wheel.Flush();
+        else
+            _timer?.Stop();
     }
+
+    #endregion
+
+    #region Static Methods
+
+    public static bool HasVelocity(double velocity, double threshold)
+        => velocity < -threshold || velocity > threshold;
 
     #endregion
 
