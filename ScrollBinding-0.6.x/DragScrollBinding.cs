@@ -5,6 +5,7 @@ using OpenTabletDriver.Plugin.Attributes;
 using OpenTabletDriver.Plugin.DependencyInjection;
 using OpenTabletDriver.Plugin.Output;
 using OpenTabletDriver.Plugin.Tablet;
+using OpenTabletDriver.Plugin.Timing;
 using ScrollBinding.Lib.Interfaces;
 using ITimer = OpenTabletDriver.Plugin.Timers.ITimer;
 
@@ -23,13 +24,14 @@ public sealed class DragScrollBinding : IStateBinding, IDisposable
     private const double INTERVAL_SECONDS = INTERVAL_MILLISECONDS / 1000;
 
     private readonly IMouseWheel Wheel = ScrollBindingBase.CurrentPlatformWheel;
+    private readonly HPETDeltaStopwatch _reportTimer = new();
 
     #endregion
 
     private ScrollBindingFilter? _filter;
     private IOutputMode? _outputMode;
     private TabletReference? _tablet;
-    private ITimer? _timer;
+    private ITimer? _timer; // for decceleration
 
     private Matrix3x2 _rotationMatrix;
 
@@ -38,14 +40,13 @@ public sealed class DragScrollBinding : IStateBinding, IDisposable
     private bool _hasVelocityY;
 
     private Vector2? _anchorPosition;
-    private Vector2? _initiatingPosition;
     private Vector2? _lastPosition;
+    private bool _aboveThreshold;
+    private bool _pressing;
 
     private uint _PenMaxPressure = 1024;
     private bool _scrollOnDrag = false;
     private Vector2 _direction = Vector2.One;
-    private double _deltaTime; // in milliseconds
-    private bool _pressing;
 
     private bool _fullyinitialized;
 
@@ -86,7 +87,7 @@ public sealed class DragScrollBinding : IStateBinding, IDisposable
     #region Parameters
 
     [Property("X Sensitivity"),
-     DefaultPropertyValue(0.5d),
+     DefaultPropertyValue(0.1d),
      ToolTip("Drag Scroll Binding:\n\n" +
              "The horizontal sensitivity of the drag scroll binding. Higher values will result in faster scrolling.\n" +
              "A negative value will result in inverted scrolling.\n" +
@@ -240,13 +241,14 @@ public sealed class DragScrollBinding : IStateBinding, IDisposable
 
         _pressing = true;
         _lastPosition = null;
+        _reportTimer.Start();
     }
 
     public void Release(TabletReference tablet, IDeviceReport report)
     {
         _pressing = false;
         _anchorPosition = null;
-        _initiatingPosition = null;
+        _reportTimer.Stop();
     }
 
     #endregion
@@ -273,15 +275,18 @@ public sealed class DragScrollBinding : IStateBinding, IDisposable
         switch (report)
         {
             case ITabletReport tabletReport:
-                var aboveThreshold = ((float)tabletReport.Pressure / (float)_PenMaxPressure * 100f) > DragScrollingPressureThreshold;
+                _aboveThreshold = ((float)tabletReport.Pressure / (float)_PenMaxPressure * 100f) > DragScrollingPressureThreshold;
+                var requiredPressureReleased = !_scrollOnDrag || !_aboveThreshold;
 
-                if (!_scrollOnDrag || aboveThreshold)
+                if (!_scrollOnDrag || _aboveThreshold)
                     Scroll(tabletReport);
+                else if (requiredPressureReleased)
+                    _lastPosition = null;
 
                 // The timer is only used for kinetic scrolling.
                 // There is of course no point in starting it, if there is no velocity.
                 // Finally, there is no point in starting it if the threshold isn't met (or one isn't needed)
-                if (EnableKineticScrolling && (_hasVelocityX || _hasVelocityY) && (!_scrollOnDrag || !aboveThreshold))
+                if (EnableKineticScrolling && (_hasVelocityX || _hasVelocityY) && requiredPressureReleased)
                     _timer?.Start();
                 break;
             case IMouseReport mouseReport:
@@ -299,28 +304,24 @@ public sealed class DragScrollBinding : IStateBinding, IDisposable
     // This method is run every time a tablet report is received
     private void Scroll(IAbsolutePositionReport positionReport)
     {
-        if (_deltaTime == 0) return;
-
+        // Store the first position so we can anchro the cursor
+        // The copy expires on Binding Release
         _anchorPosition ??= new Vector2(positionReport.Position.X, positionReport.Position.Y);
 
         var pos = Vector2.Transform(positionReport.Position, _rotationMatrix);
-
-        // Store the first position so we can freeze the cursor
-        // The copy expires on Release
-        _initiatingPosition ??= pos;
         _lastPosition ??= pos;
 
         // skip if the position hasn't changed
         if (_lastPosition == pos)
             return;
 
-        var delta = pos - _lastPosition;
+        var deltaPos = pos - _lastPosition;
+        var deltaTime = _reportTimer.Restart();
 
-        _currentVelocity[0] = (((delta?.X ?? 0) * XSensitivity) / _deltaTime) * _direction.X;
-        _currentVelocity[1] = (((delta?.Y ?? 0) * YSensitivity) / _deltaTime) * _direction.Y;
+        _currentVelocity[0] = (((deltaPos?.X ?? 0) * XSensitivity) / deltaTime.Milliseconds) * _direction.X;
+        _currentVelocity[1] = (((deltaPos?.Y ?? 0) * YSensitivity) / deltaTime.Milliseconds) * _direction.Y;
 
         _lastPosition = pos;
-        _deltaTime = 0;
 
         //Log.Debug("Drag Scroll Binding", $"Velocity: X = {_currentVelocity[0]}, Y = {_currentVelocity[1]}");
         
@@ -373,9 +374,7 @@ public sealed class DragScrollBinding : IStateBinding, IDisposable
 
     public void IntervalElapsed()
     {
-        if (_timer == null) return;
-
-        _deltaTime += (ulong)_timer.Interval;
+        if (_timer == null || _aboveThreshold) return;
 
         _hasVelocityX = HasVelocity(_currentVelocity[0], 1);
         _hasVelocityY = HasVelocity(_currentVelocity[1], 1);
@@ -407,6 +406,8 @@ public sealed class DragScrollBinding : IStateBinding, IDisposable
 
     public void Dispose()
     {
+        _reportTimer.Stop();
+
         if (_timer != null)
         {
             _timer.Elapsed -= IntervalElapsed;
