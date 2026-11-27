@@ -55,9 +55,6 @@ public sealed class JoystickScrollBinding : IStateBinding, IDisposable
 
     #region Properties
 
-    /// <summary>
-    ///   The timer used for decceleration
-    /// </summary>
     [Resolved]
     public ITimer? Timer
     {

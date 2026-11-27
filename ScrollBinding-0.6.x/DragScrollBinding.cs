@@ -22,9 +22,10 @@ public sealed class DragScrollBinding : IStateBinding, IDisposable
 
     private const double INTERVAL_MILLISECONDS = 1;
     private const double INTERVAL_SECONDS = INTERVAL_MILLISECONDS / 1000;
+    private const double THRESHOLD = 1;
 
     private readonly IMouseWheel Wheel = ScrollBindingBase.CurrentPlatformWheel;
-    private readonly HPETDeltaStopwatch _reportTimer = new();
+    private readonly HPETDeltaStopwatch _reportTimer = new(); // timer for tool reports.
 
     #endregion
 
@@ -54,6 +55,9 @@ public sealed class DragScrollBinding : IStateBinding, IDisposable
 
     #region Properties
 
+    /// <summary>
+    ///   This timer is used for decceleration.
+    /// </summary>
     [Resolved]
     public ITimer? Timer
     {
@@ -304,11 +308,12 @@ public sealed class DragScrollBinding : IStateBinding, IDisposable
     // This method is run every time a tablet report is received
     private void Scroll(IAbsolutePositionReport positionReport)
     {
-        // Store the first position so we can anchro the cursor
+        // Store the first position so we can anchor the cursor
         // The copy expires on Binding Release
         _anchorPosition ??= new Vector2(positionReport.Position.X, positionReport.Position.Y);
 
         var pos = Vector2.Transform(positionReport.Position, _rotationMatrix);
+        
         _lastPosition ??= pos;
 
         // skip if the position hasn't changed
@@ -334,37 +339,21 @@ public sealed class DragScrollBinding : IStateBinding, IDisposable
             Wheel.Flush();
     }
 
-    private void DecelerateX()
+    private void Decelerate(uint axis)
     {
-        var deccelerationX = _currentVelocity[0] > 0 ? -Deceleration : Deceleration;
+        if (axis > 1) return;
+        
+        var deceleration = _currentVelocity[axis] > 0 ? -Deceleration : Deceleration;
         var oldVelocity = (double[])_currentVelocity.Clone();
 
-        _currentVelocity[0] += deccelerationX * INTERVAL_MILLISECONDS;
+        _currentVelocity[axis] += deceleration * INTERVAL_MILLISECONDS;
 
-        // Necessary to prevent scrolling in the opposite direction after deceleration
-        if (oldVelocity[0] > 1 && _currentVelocity[0] < -1)
-            _currentVelocity[0] = 0;
-        else if (oldVelocity[0] < -1 && _currentVelocity[0] > 1)
-            _currentVelocity[0] = 0;
-
-        if (_currentVelocity[0] != 0)
+        if (IsOvershooting(oldVelocity[axis], _currentVelocity[axis], THRESHOLD))
+            _currentVelocity[axis] = 0;
+        
+        if (axis == 0)
             Wheel.ScrollHorizontally((int)_currentVelocity[0]);
-    }
-
-    private void DecelerateY()
-    {
-        var deccelerationY = _currentVelocity[1] > 0 ? -Deceleration : Deceleration;
-        var oldVelocity = (double[])_currentVelocity.Clone();
-
-        _currentVelocity[1] += deccelerationY * INTERVAL_MILLISECONDS;
-
-        // Necessary to prevent scrolling in the opposite direction after deceleration
-        if (oldVelocity[1] > 1 && _currentVelocity[1] < -1)
-            _currentVelocity[1] = 0;
-        else if (oldVelocity[1] < -1 && _currentVelocity[1] > 1)
-            _currentVelocity[1] = 0;
-
-        if (_currentVelocity[1] != 0)
+        else if (axis == 1)
             Wheel.ScrollVertically((int)_currentVelocity[1]);
     }
 
@@ -376,14 +365,14 @@ public sealed class DragScrollBinding : IStateBinding, IDisposable
     {
         if (_timer == null || _aboveThreshold) return;
 
-        _hasVelocityX = HasVelocity(_currentVelocity[0], 1);
-        _hasVelocityY = HasVelocity(_currentVelocity[1], 1);
+        _hasVelocityX = HasVelocity(_currentVelocity[0], THRESHOLD);
+        _hasVelocityY = HasVelocity(_currentVelocity[1], THRESHOLD);
 
         if (EnableKineticScrolling && _hasVelocityX)
-            DecelerateX();
+            Decelerate(0);
 
         if (EnableKineticScrolling && _hasVelocityY)
-            DecelerateY();
+            Decelerate(1);
 
         // In the situation where the velocity becomes 0,
         // This will send one last event to the OS to cancel any scrolling.
@@ -399,6 +388,23 @@ public sealed class DragScrollBinding : IStateBinding, IDisposable
 
     public static bool HasVelocity(double velocity, double threshold)
         => velocity < -threshold || velocity > threshold;
+
+    /// <summary>
+    ///   Prevent scrolling in the opposite direction after deceleration
+    /// </summary>
+    /// <param name="oldVelocity"></param>
+    /// <param name="newVelocity"></param>
+    /// <param name="direction"></param>
+    /// <returns></returns>
+    public static bool IsOvershooting(double oldVelocity, double newVelocity, double threshold)
+    {
+        if (oldVelocity > threshold && newVelocity < -threshold)
+            return true;
+        else if (oldVelocity < -threshold && newVelocity > threshold)
+            return true;
+        else
+            return false;
+    }
 
     #endregion
 
