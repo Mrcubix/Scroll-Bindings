@@ -43,6 +43,9 @@ public sealed class JoystickScrollBinding : IStateBinding, IDisposable
     private Vector2? _initiatingPosition;
     
     private uint _PenMaxPressure= 1024;
+    private Vector2 _direction = Vector2.One;
+    private double _xSpeed = BASE_SPEED;
+    private double _ySpeed = BASE_SPEED;
     private double _deltaTime; // in milliseconds
     private bool _pressing;
     
@@ -64,7 +67,6 @@ public sealed class JoystickScrollBinding : IStateBinding, IDisposable
             {
                 _timer.Interval = (float)INTERVAL_MILLISECONDS;
                 _timer.Elapsed += IntervalElapsed;
-                _timer.Start();
             }
         }
     }
@@ -87,13 +89,15 @@ public sealed class JoystickScrollBinding : IStateBinding, IDisposable
      DefaultPropertyValue(0.3d),
      ToolTip("Autoscroll Binding:\n\n" +
              "The horizontal sensitivity of the drag scroll binding. Higher values will result in faster scrolling.\n" +
+             "A negative value will invert the scroll direction.\n" +
              "Horizontal scrolling cannot be properly supported on Windows due to SendInput limitations.")]
     public double XSensitivity { get; set; } = 0.3d;
 
     [Property("Y Sensitivity"),
      DefaultPropertyValue(1d),
      ToolTip("Autoscroll Binding:\n\n" +
-             "The vertical sensitivity of the drag scroll binding. Higher values will result in faster scrolling.")]
+             "The vertical sensitivity of the drag scroll binding. Higher values will result in faster scrolling.\n" +
+             "A negative value will invert the scroll direction.")]
     public double YSensitivity { get; set; } = 1d;
 
     [Property("Deadzone"),
@@ -103,11 +107,17 @@ public sealed class JoystickScrollBinding : IStateBinding, IDisposable
              "Unit is in tablet units, this is not pourcentage-based.")]
     public double Deadzone { get; set; } = 30d;
 
-    [BooleanProperty("Invert Scroll", ""),
+    [BooleanProperty("Invert X Scroll", ""),
      DefaultPropertyValue(false),
      ToolTip("Autoscroll Binding:\n\n" +
-             "Inverts the scroll direction of the drag scroll binding.\n")]
-    public bool InvertScroll { get; set; }
+             "Inverts the horizontal scroll direction of the drag scroll binding.\n")]
+    public bool InvertScrollX { get; set; }
+
+    [BooleanProperty("Invert Y Scroll", ""),
+     DefaultPropertyValue(false),
+     ToolTip("Autoscroll Binding:\n\n" +
+             "Inverts the vertical scroll direction of the drag scroll binding.\n")]
+    public bool InvertScrollY { get; set; }
 
     [BooleanProperty("Freeze Cursor", ""),
      DefaultPropertyValue(true),
@@ -115,10 +125,10 @@ public sealed class JoystickScrollBinding : IStateBinding, IDisposable
              "The cursor will remain at the same position while scrolling.")]
     public bool FrozenCursor { get; set; } = true;
 
-    /*[BooleanProperty("Cancel Pressure", ""),
+    [BooleanProperty("Cancel Pressure", ""),
      DefaultPropertyValue(true),
      ToolTip("Autoscroll Binding:\n\n" +
-             "The pressure will be canceled while scrolling.")]*/
+             "The pressure will be canceled while scrolling.")]
     public bool CancelPressure { get; set; } = true;
 
     /*[BooleanProperty("Scroll when dragging", ""),
@@ -194,6 +204,12 @@ public sealed class JoystickScrollBinding : IStateBinding, IDisposable
             _fullyinitialized = true;
 
         ScrollOnDrag = AutoscrollPressureThreshold > 0;
+
+        _direction = new Vector2(InvertScrollX ? -1 : 1, InvertScrollY ? -1 : 1);
+
+        // Shamelessly inspired from Mozilla Firefox's repo
+        _xSpeed = Math.Max(1, BASE_SPEED * XSensitivity);
+        _ySpeed = Math.Max(1, BASE_SPEED * YSensitivity);
     }
 
     private static Matrix3x2 CreateTransformationMatrix(float rotation)
@@ -210,8 +226,9 @@ public sealed class JoystickScrollBinding : IStateBinding, IDisposable
 
         // Cancel any existing velocity
         _currentVelocity = [0d, 0d];
-
         _pressing = true;
+        
+        _timer?.Start();
     }
 
     public void Release(TabletReference tablet, IDeviceReport report)
@@ -219,6 +236,8 @@ public sealed class JoystickScrollBinding : IStateBinding, IDisposable
         _pressing = false;
         _anchorPosition = null;
         _initiatingPosition = null;
+
+        _timer?.Stop();
     }
 
     #endregion
@@ -235,9 +254,8 @@ public sealed class JoystickScrollBinding : IStateBinding, IDisposable
                 positionReport.Position = _anchorPosition.GetValueOrDefault();
 
             // Cancel pressure during scroll so users don't click while scrolling
-            if (CancelPressure)
-                if (positionReport is ITabletReport tabletReport)
-                    tabletReport.Pressure = 0;
+            if (CancelPressure && positionReport is ITabletReport tabletReport)
+                tabletReport.Pressure = 0;
         }
     }
 
@@ -284,17 +302,12 @@ public sealed class JoystickScrollBinding : IStateBinding, IDisposable
         if (_initiatingPosition == pos)
             return;
 
-        // Shamelessly inspired from Mozilla Firefox's repo
-        var XSpeed = Math.Max(1, BASE_SPEED * XSensitivity);
-        var YSpeed = Math.Max(1, BASE_SPEED * YSensitivity);
-
         var delta = pos - _initiatingPosition;
-        var direction = InvertScroll ? -1 : 1;
 
         var minDeltaTime = Math.Min(100f, _deltaTime) / 20;
 
-        _currentVelocity[0] = ((delta?.X ?? 0 / XSpeed) / minDeltaTime) * INTERNAL_COEFFICIENT * direction;
-        _currentVelocity[1] = ((delta?.Y ?? 0 / YSpeed) / minDeltaTime) * INTERNAL_COEFFICIENT * -direction;
+        _currentVelocity[0] = ((delta?.X ?? 0 / _xSpeed) / minDeltaTime) * INTERNAL_COEFFICIENT * _direction.X;
+        _currentVelocity[1] = ((delta?.Y ?? 0 / _ySpeed) / minDeltaTime) * INTERNAL_COEFFICIENT * -_direction.Y;
 
         _deltaTime = 0;
 
