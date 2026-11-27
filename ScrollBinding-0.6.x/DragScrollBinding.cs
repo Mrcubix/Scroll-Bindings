@@ -330,9 +330,9 @@ public sealed class DragScrollBinding : IStateBinding, IDisposable
 
         //Log.Debug("Drag Scroll Binding", $"Velocity: X = {_currentVelocity[0]}, Y = {_currentVelocity[1]}");
         
-        if (_hasVelocityX = HasVelocity(_currentVelocity[0], 1))
+        if (_hasVelocityX = HasVelocity(_currentVelocity[0], THRESHOLD))
             Wheel.ScrollHorizontally((int)_currentVelocity[0]);
-        if (_hasVelocityY = HasVelocity(_currentVelocity[1], 1))
+        if (_hasVelocityY = HasVelocity(_currentVelocity[1], THRESHOLD))
             Wheel.ScrollVertically((int)_currentVelocity[1]);
 
         if (_hasVelocityX || _hasVelocityY)
